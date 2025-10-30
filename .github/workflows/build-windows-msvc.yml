@@ -1,0 +1,48 @@
+name: Build Windows (MSVC)
+
+on:
+  workflow_dispatch:  # manual only
+
+jobs:
+  build-windows-msvc:
+    name: Windows (MSVC)
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          modules: 'qtnetworkauth'
+          cache: true
+          add-tools-to-path: true
+      
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+      
+      - name: Configure CMake
+        run: cmake --preset windows-msvc-release
+      
+      - name: Build
+        run: cmake --build --preset windows-msvc-release
+      
+      - name: Package
+        run: |
+          mkdir release-msvc
+          cp out/build/windows-msvc-release/Velocity/VelocityNext.exe release-msvc/
+          cp out/build/windows-msvc-release/XboxInternals/XboxInternals.dll release-msvc/
+          windeployqt release-msvc/VelocityNext.exe
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Velocity-Next-Windows-MSVC
+          path: release-msvc/

@@ -1,0 +1,49 @@
+name: Build Linux
+
+on:
+  workflow_dispatch:  # manual only
+
+jobs:
+  build-linux:
+    name: Linux (Ubuntu)
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+      
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'linux'
+          target: 'desktop'
+          modules: 'qtnetworkauth'
+          cache: true
+      
+      - name: Configure CMake
+        run: cmake --preset linux-release
+      
+      - name: Build
+        run: cmake --build --preset linux-release
+      
+      - name: Package
+        run: |
+          mkdir release-linux
+          cp out/build/linux-release/Velocity/Velocity release-linux/
+          cp out/build/linux-release/XboxInternals/libXboxInternals.so release-linux/
+          cd release-linux
+          tar -czf ../Velocity-Next-Linux.tar.gz *
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Velocity-Next-Linux
+          path: Velocity-Next-Linux.tar.gz

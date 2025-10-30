@@ -1,0 +1,127 @@
+name: Build Windows (MinGW)
+
+on:
+  workflow_dispatch:  # manual only
+
+jobs:
+  build-windows-mingw:
+    name: Windows (MinGW)
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_mingw'
+          modules: 'qtnetworkauth'
+          cache: true
+          tools: 'tools_mingw1310,qt.tools.win64_mingw1310'
+          add-tools-to-path: true
+      
+      - name: Setup MinGW environment
+        run: |
+          $qtRoot = "${{ env.QT_ROOT_DIR }}"
+          echo "Qt root: $qtRoot"
+          
+          $mingwPath = $null
+          
+          # Priority 1: Check Qt's bin directory for bundled MinGW
+          $qtBinPath = Join-Path $qtRoot "bin"
+          if (Test-Path (Join-Path $qtBinPath "g++.exe")) {
+            $mingwPath = $qtBinPath
+            echo "✅ Found MinGW in Qt bin: $mingwPath"
+          }
+          
+          # Priority 2: Check Tools directory for separate MinGW installation
+          if (-not $mingwPath) {
+            $toolsRoot = (Get-Item $qtRoot).Parent.Parent.FullName
+            $toolsPath = Join-Path $toolsRoot "Tools"
+            echo "Checking Tools directory: $toolsPath"
+            
+            if (Test-Path $toolsPath) {
+              echo "Tools contents:"
+              Get-ChildItem $toolsPath -Directory | ForEach-Object { echo "  - $($_.Name)" }
+              
+              # Look for any mingw directory
+              $mingwDir = Get-ChildItem $toolsPath -Directory -Filter "mingw*" | 
+                         Sort-Object Name -Descending | 
+                         Select-Object -First 1
+              if ($mingwDir) {
+                $mingwBinPath = Join-Path $mingwDir.FullName "bin"
+                if (Test-Path (Join-Path $mingwBinPath "g++.exe")) {
+                  $mingwPath = $mingwBinPath
+                  echo "✅ Found MinGW in Tools: $mingwPath ($($mingwDir.Name))"
+                }
+              }
+            }
+          }
+          
+          # ERROR if Qt's MinGW not found - do NOT use system MinGW
+          if (-not $mingwPath) {
+            echo "❌ ERROR: Qt's MinGW not found!"
+            echo "Qt's MinGW is required for ABI compatibility with Qt libraries."
+            echo "System MinGW causes linking errors with Qt6EntryPoint."
+            echo ""
+            echo "Searched locations:"
+            echo "  - Qt bin: $qtBinPath"
+            echo "  - Qt Tools: $toolsPath"
+            exit 1
+          }
+          
+          # Verify compilers exist
+          $gccPath = Join-Path $mingwPath "gcc.exe"
+          $gxxPath = Join-Path $mingwPath "g++.exe"
+          
+          if (-not (Test-Path $gccPath) -or -not (Test-Path $gxxPath)) {
+            echo "❌ ERROR: Compilers not found at $mingwPath"
+            exit 1
+          }
+          
+          echo "✅ Using Qt's MinGW:"
+          echo "  Path: $mingwPath"
+          echo "  GCC: $gccPath"
+          echo "  G++: $gxxPath"
+          
+          # Set environment variables
+          echo "MINGW_PATH=$mingwPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_C_COMPILER=$gccPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          echo "CMAKE_CXX_COMPILER=$gxxPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          
+          # Test compiler version
+          & $gxxPath --version
+        shell: pwsh
+      
+      - name: Configure CMake
+        run: |
+          $env:PATH = "${{ env.MINGW_PATH }};$env:PATH"
+          cmake --preset windows-mingw-release `
+            -DCMAKE_C_COMPILER="${{ env.CMAKE_C_COMPILER }}" `
+            -DCMAKE_CXX_COMPILER="${{ env.CMAKE_CXX_COMPILER }}"
+        shell: pwsh
+      
+      - name: Build
+        run: |
+          $env:PATH = "${{ env.MINGW_PATH }};$env:PATH"
+          cmake --build --preset windows-mingw-release
+        shell: pwsh
+      
+      - name: Package
+        run: |
+          mkdir release-mingw
+          cp out/build/windows-mingw-release/Velocity/VelocityNext.exe release-mingw/
+          cp out/build/windows-mingw-release/XboxInternals/libXboxInternals.dll release-mingw/
+          windeployqt release-mingw/VelocityNext.exe
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Velocity-Next-Windows-MinGW
+          path: release-mingw/

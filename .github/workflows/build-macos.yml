@@ -1,0 +1,47 @@
+name: Build macOS
+
+on:
+  workflow_dispatch:  # manual only
+
+jobs:
+  build-macos:
+    name: macOS
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'mac'
+          target: 'desktop'
+          modules: 'qtnetworkauth'
+          cache: true
+      
+      - name: Configure CMake
+        run: cmake --preset macos-release
+      
+      - name: Build
+        run: cmake --build --preset macos-release
+      
+      - name: Deploy Qt dependencies
+        run: |
+          chmod +x deploy_mac.sh
+          ./deploy_mac.sh out/build/macos-release
+      
+      - name: Create DMG
+        run: |
+          mkdir dmg-contents
+          cp -R out/build/macos-release/Velocity/Velocity.app dmg-contents/
+          hdiutil create -volname "Velocity-Next" -srcfolder dmg-contents -ov -format UDZO Velocity-Next-macOS.dmg
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Velocity-Next-macOS
+          path: Velocity-Next-macOS.dmg

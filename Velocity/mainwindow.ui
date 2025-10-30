@@ -1,0 +1,412 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1013</width>
+    <height>623</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Velocity-Next - Xbox 360 File Manager</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="Resources.qrc">
+    <normaloff>:/Images/Leaner24.png</normaloff>:/Images/Leaner24.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralWidget">
+   <layout class="QGridLayout" name="gridLayout">
+    <property name="margin" stdset="0">
+     <number>0</number>
+    </property>
+    <item row="0" column="0">
+     <widget class="QMdiArea" name="mdiArea">
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
+      <property name="verticalScrollBarPolicy">
+       <enum>Qt::ScrollBarAsNeeded</enum>
+      </property>
+      <property name="horizontalScrollBarPolicy">
+       <enum>Qt::ScrollBarAsNeeded</enum>
+      </property>
+      <property name="background">
+       <brush brushstyle="SolidPattern">
+        <color alpha="255">
+         <red>160</red>
+         <green>160</green>
+         <blue>160</blue>
+        </color>
+       </brush>
+      </property>
+      <property name="viewMode">
+       <enum>QMdiArea::SubWindowView</enum>
+      </property>
+      <property name="documentMode">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menuBar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1013</width>
+     <height>24</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuOpen">
+     <property name="title">
+      <string>Open</string>
+     </property>
+     <property name="icon">
+      <iconset resource="Resources.qrc">
+       <normaloff>:/Images/open.png</normaloff>:/Images/open.png</iconset>
+     </property>
+     <addaction name="actionSTRB_File"/>
+     <addaction name="actionXDBF_File"/>
+     <addaction name="actionPackage"/>
+     <addaction name="actionSVOD_System"/>
+     <addaction name="actionYTGR"/>
+     <addaction name="separator"/>
+     <addaction name="actionISO_GOD_Viewer"/>
+    </widget>
+    <addaction name="menuOpen"/>
+    <addaction name="actionCreate_Package"/>
+   </widget>
+   <widget class="QMenu" name="menuProfile">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <widget class="QMenu" name="menuProfile_Editor">
+     <property name="title">
+      <string>Profile Tools</string>
+     </property>
+     <property name="icon">
+      <iconset resource="Resources.qrc">
+       <normaloff>:/Images/profile.png</normaloff>:/Images/profile.png</iconset>
+     </property>
+     <addaction name="actionGame_Adder"/>
+     <addaction name="actionProfile_Cleaner"/>
+     <addaction name="actionProfile_Creator"/>
+     <addaction name="actionProfile_Editor"/>
+    </widget>
+    <widget class="QMenu" name="menuDevice_Tools">
+     <property name="title">
+      <string>Device Tools</string>
+     </property>
+     <property name="icon">
+      <iconset resource="Resources.qrc">
+       <normaloff>:/Images/hdd.png</normaloff>:/Images/hdd.png</iconset>
+     </property>
+     <addaction name="actionDevice_Viewer"/>
+     <addaction name="actionFATX_File_Path"/>
+    </widget>
+    <addaction name="menuDevice_Tools"/>
+    <addaction name="menuProfile_Editor"/>
+    <addaction name="actionGamer_Picture_Pack_Creator"/>
+    <addaction name="actionTitle_ID_Finder"/>
+    <addaction name="actionTheme_Creator"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionCheck_For_Updates"/>
+    <addaction name="separator"/>
+    <addaction name="actionView_Wiki"/>
+    <addaction name="actionDonate"/>
+    <addaction name="separator"/>
+    <addaction name="actionAbout"/>
+   </widget>
+   <widget class="QMenu" name="menuPlugins">
+    <property name="title">
+     <string>Plugins</string>
+    </property>
+    <widget class="QMenu" name="menuGame_Modders">
+     <property name="title">
+      <string>Game Modders</string>
+     </property>
+    </widget>
+    <widget class="QMenu" name="menuProfile_Modders">
+     <property name="title">
+      <string>Profile Modders</string>
+     </property>
+    </widget>
+    <addaction name="menuGame_Modders"/>
+    <addaction name="menuProfile_Modders"/>
+   </widget>
+   <widget class="QMenu" name="menuSettings">
+    <property name="title">
+     <string>Settings</string>
+    </property>
+    <widget class="QMenu" name="menuTheme">
+     <property name="title">
+      <string>Theme</string>
+     </property>
+     <addaction name="actionThemeAuto"/>
+     <addaction name="actionThemeDark"/>
+     <addaction name="actionThemeLight"/>
+    </widget>
+    <addaction name="actionPreferences"/>
+    <addaction name="separator"/>
+    <addaction name="menuTheme"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuProfile"/>
+   <addaction name="menuPlugins"/>
+   <addaction name="menuSettings"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusBar">
+   <property name="statusTip">
+    <string/>
+   </property>
+   <property name="whatsThis">
+    <string/>
+   </property>
+  </widget>
+  <action name="actionCreate_Package">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/packageIcon.png</normaloff>:/Images/packageIcon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Create Package</string>
+   </property>
+  </action>
+  <action name="actionTheme_Creator">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/themesmall.png</normaloff>:/Images/themesmall.png</iconset>
+   </property>
+   <property name="text">
+    <string>Theme Creator</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/information.png</normaloff>:/Images/information.png</iconset>
+   </property>
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionPackage">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/packageIcon.png</normaloff>:/Images/packageIcon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Package</string>
+   </property>
+  </action>
+  <action name="actionXDBF_File">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/gpd.png</normaloff>:/Images/gpd.png</iconset>
+   </property>
+   <property name="text">
+    <string>GPD</string>
+   </property>
+  </action>
+  <action name="actionSTRB_File">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/strb.png</normaloff>:/Images/strb.png</iconset>
+   </property>
+   <property name="text">
+    <string>Avatar Asset</string>
+   </property>
+  </action>
+  <action name="actionTitle_ID_Finder">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/find.png</normaloff>:/Images/find.png</iconset>
+   </property>
+   <property name="text">
+    <string>Title ID Finder</string>
+   </property>
+  </action>
+  <action name="actionProfile_Creator">
+   <property name="text">
+    <string>Profile Creator</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionProfile_Editor">
+   <property name="text">
+    <string>Profile Editor</string>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionGame_Adder">
+   <property name="text">
+    <string>Game Adder</string>
+   </property>
+   <property name="shortcutContext">
+    <enum>Qt::WindowShortcut</enum>
+   </property>
+   <property name="iconVisibleInMenu">
+    <bool>true</bool>
+   </property>
+  </action>
+  <action name="actionGamer_Picture_Pack_Creator">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/gamerpicture.png</normaloff>:/Images/gamerpicture.png</iconset>
+   </property>
+   <property name="text">
+    <string>Gamer Picture Pack Creator</string>
+   </property>
+  </action>
+  <action name="actionSome_Game">
+   <property name="text">
+    <string>Some Game</string>
+   </property>
+  </action>
+  <action name="actionReload">
+   <property name="text">
+    <string>Reload</string>
+   </property>
+  </action>
+  <action name="actionAsdf">
+   <property name="text">
+    <string>asdf</string>
+   </property>
+  </action>
+  <action name="actionView_Wiki">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/wiki.png</normaloff>:/Images/wiki.png</iconset>
+   </property>
+   <property name="text">
+    <string>View Wiki</string>
+   </property>
+  </action>
+  <action name="actionDonate">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/donate'.png</normaloff>:/Images/donate'.png</iconset>
+   </property>
+   <property name="text">
+    <string>Donate</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/preferences.png</normaloff>:/Images/preferences.png</iconset>
+   </property>
+   <property name="text">
+    <string>Preferences</string>
+   </property>
+  </action>
+  <action name="actionFATX_File_Path">
+   <property name="text">
+    <string>File Path Tool</string>
+   </property>
+  </action>
+  <action name="actionProfile_Cleaner">
+   <property name="text">
+    <string>Profile Cleaner</string>
+   </property>
+  </action>
+  <action name="actionCheck_For_Updates">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/updates.png</normaloff>:/Images/updates.png</iconset>
+   </property>
+   <property name="text">
+    <string>Check For Updates</string>
+   </property>
+  </action>
+  <action name="actionSVOD_System">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/svod.png</normaloff>:/Images/svod.png</iconset>
+   </property>
+   <property name="text">
+    <string>SVOD System</string>
+   </property>
+  </action>
+  <action name="actionYTGR">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/ytgr.png</normaloff>:/Images/ytgr.png</iconset>
+   </property>
+   <property name="text">
+    <string>YTGR</string>
+   </property>
+  </action>
+  <action name="actionDevice_Viewer">
+   <property name="text">
+    <string>Raw Device Viewer</string>
+   </property>
+  </action>
+  <action name="actionISO_GOD_Viewer">
+   <property name="text">
+    <string>ISO File</string>
+   </property>
+  </action>
+  <action name="actionThemeAuto">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Auto (Follow System)</string>
+   </property>
+   <property name="toolTip">
+    <string>Automatically follow system theme (Windows 10+, macOS 10.14+, modern Linux)</string>
+   </property>
+  </action>
+  <action name="actionThemeDark">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Dark</string>
+   </property>
+   <property name="toolTip">
+    <string>Use dark theme</string>
+   </property>
+  </action>
+  <action name="actionThemeLight">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Light</string>
+   </property>
+   <property name="toolTip">
+    <string>Use light theme</string>
+   </property>
+  </action>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="Resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

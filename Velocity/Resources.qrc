@@ -1,0 +1,101 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Images/CreateFile35.png</file>
+        <file>Images/Eye16.png</file>
+        <file>Images/Fix24.png</file>
+        <file>Images/free60.png</file>
+        <file>Images/Github16.png</file>
+        <file>Images/Leaner.png</file>
+        <file>Images/Leaner24.png</file>
+        <file>Images/AccountFileIcon.png</file>
+        <file>Images/GpdFileIcon.png</file>
+        <file>Images/ImageFileIcon.png</file>
+        <file>Images/PecFileIcon.png</file>
+        <file>Images/DefaultFileIcon.png</file>
+        <file>Images/cancel.png</file>
+        <file>Images/extract.png</file>
+        <file>Images/new folder.png</file>
+        <file>Images/rename.png</file>
+        <file>Images/save.png</file>
+        <file>Images/certificate.png</file>
+        <file>Images/descriptor.png</file>
+        <file>Images/license.png</file>
+        <file>Images/flag.png</file>
+        <file>Images/add.png</file>
+        <file>Images/delete.png</file>
+        <file>Images/gpd.png</file>
+        <file>Images/avatar-body.png</file>
+        <file>Images/HiddenAchievement.png</file>
+        <file>Images/unlock.png</file>
+        <file>Images/replace.png</file>
+        <file>Images/properties.png</file>
+        <file>Images/clean.png</file>
+        <file>Images/convert.png</file>
+        <file>Images/gear.png</file>
+        <file>Images/information.png</file>
+        <file>Images/undo.png</file>
+        <file>Images/lock.png</file>
+        <file>Images/avatarJumping.png</file>
+        <file>Images/2000A.png</file>
+        <file>Images/2000B.png</file>
+        <file>Images/2000C.png</file>
+        <file>Images/20000.png</file>
+        <file>Images/20001.png</file>
+        <file>Images/20002.png</file>
+        <file>Images/20003.png</file>
+        <file>Images/20004.png</file>
+        <file>Images/20005.png</file>
+        <file>Images/20006.png</file>
+        <file>Images/20007.png</file>
+        <file>Images/20008.png</file>
+        <file>Images/20009.png</file>
+        <file>Images/male avatar.png</file>
+        <file>Images/avatar female.png</file>
+        <file>Images/defaultTitleImage.png</file>
+        <file>Images/download.png</file>
+        <file>Images/watermark.png</file>
+        <file>Images/go.png</file>
+        <file>Images/id.png</file>
+        <file>Images/xbox.png</file>
+        <file>Images/gamerpicture.png</file>
+        <file>Images/open.png</file>
+        <file>Images/profile.png</file>
+        <file>Images/find.png</file>
+        <file>Images/themesmall.png</file>
+        <file>Images/start.png</file>
+        <file>Images/wiki.png</file>
+        <file>Images/donate'.png</file>
+        <file>Images/preferences.png</file>
+        <file>Images/achievement.png</file>
+        <file>Images/gamerscore.png</file>
+        <file>Images/avatar.png</file>
+        <file>Images/hdd.png</file>
+        <file>Images/star.png</file>
+        <file>Images/cleaner.png</file>
+        <file>Images/themeAvatar.png</file>
+        <file>Images/packageAvatar.png</file>
+        <file>Images/packageIcon.png</file>
+        <file>Images/updates.png</file>
+        <file>Images/hammer.png</file>
+        <file>Images/achievement creation.png</file>
+        <file>Images/svod.png</file>
+        <file>Images/hash.png</file>
+        <file>Images/sign.png</file>
+        <file>Images/XEXFileIcon.png</file>
+        <file>Images/FolderFileIcon.png</file>
+        <file>Images/PackageFileIcon.png</file>
+        <file>Images/StrbFileIcon.png</file>
+        <file>Images/strb.png</file>
+        <file>Images/ytgr.png</file>
+        <file>Images/partition.png</file>
+        <file>Images/back.png</file>
+        <file>Images/forward.png</file>
+        <file>Images/harddrive.png</file>
+        <file>Images/usb drive.png</file>
+        <file>Images/restore.png</file>
+        <file>Images/NewFolder.png</file>
+        <file>Images/refresh.png</file>
+        <file>Images/inject.png</file>
+        <file>Images/profile creator.png</file>
+    </qresource>
+</RCC>
