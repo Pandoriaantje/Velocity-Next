@@ -32,6 +32,28 @@ cmake --preset linux-debug              # Linux Debug
 cmake --build --preset [chosen-preset]
 ```
 
+## Automated Builds (GitHub Actions)
+
+**Don't want to build locally?** Fork this repository and GitHub Actions will automatically build for all platforms!
+
+### Available Workflows
+
+- **Windows MinGW** - Produces portable .zip with Qt dependencies bundled
+- **Windows MSVC** - MSVC 2022 build for maximum compatibility
+- **Linux** - Ubuntu build with AppImage support (planned)
+- **macOS** - .app bundle and DMG installer
+
+### Triggering Builds
+
+1. **Fork the repository** on GitHub
+2. **Enable Actions** in your fork (Settings → Actions → General)
+3. **Manual builds**: Go to Actions tab → Select workflow → "Run workflow"
+4. **Automated releases**: Push a version tag (e.g., `v0.2.0`) to trigger all platforms
+
+### Downloading Pre-built Releases
+
+Visit the [Releases page](https://github.com/Pandoriaantje/Velocity-Next/releases) for official builds.
+
 ## Botan Dependency
 
 The cryptography library is automatically handled:
