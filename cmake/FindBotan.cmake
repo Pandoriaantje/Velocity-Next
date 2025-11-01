@@ -121,6 +121,8 @@ function(botan_generate TARGET_NAME MODULES)
     string(TOLOWER ${BOTAN_COMPILER_ID} BOTAN_COMPILER_ID)
     if (BOTAN_COMPILER_ID STREQUAL "gnu")
         set(BOTAN_COMPILER_ID "gcc")
+    elseif (BOTAN_COMPILER_ID STREQUAL "appleclang")
+        set(BOTAN_COMPILER_ID "clang")
     endif()
 
     # Run the configure.py script
