@@ -1,3 +1,16 @@
+STFS Implementation Notes - Xbox 360 Kernel Internals
+======================================================
+These notes document Xbox 360 kernel internals reverse-engineered for STFS implementation.
+For high-level STFS format specifications, see: https://free60.org/System-Software/Formats/STFS/
+
+This document contains:
+- Xbox 360 OS struct layouts (r31Struct, XCONTENT_MOUNTED_PACKAGE, BLOCKINFO)
+- Internal kernel function signatures (StfsMapNewBlock, StfsFlushBlockCacheEntry, etc.)
+- Block cache implementation details
+- Memory addresses and offsets for reverse engineering
+
+======================================================
+
 Add 0x4CB0 to Virtual Address to view in VS
 
 someStruct
