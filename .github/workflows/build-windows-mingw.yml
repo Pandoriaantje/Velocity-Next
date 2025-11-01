@@ -116,7 +116,7 @@ jobs:
       - name: Package
         run: |
           mkdir release-mingw
-          cp out/build/windows-mingw-release/Velocity/VelocityNext.exe release-mingw/
+          cp out/build/windows-mingw-release/VelocityNext/VelocityNext.exe release-mingw/
           cp out/build/windows-mingw-release/XboxInternals/libXboxInternals.dll release-mingw/
           windeployqt release-mingw/VelocityNext.exe
       

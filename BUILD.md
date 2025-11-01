@@ -301,8 +301,8 @@ Build outputs are organized in:
 **To run Velocity with the necessary permissions:**
 
 1. Navigate to the VelocityNext executable:
-   - Release: `out/build/windows-mingw-release/Velocity/VelocityNext.exe`
-   - Debug: `out/build/windows-mingw-debug/Velocity/VelocityNext.exe`
+   - Release: `out/build/windows-mingw-release/VelocityNext/VelocityNext.exe`
+   - Debug: `out/build/windows-mingw-debug/VelocityNext/VelocityNext.exe`
 
 2. **Right-click** on `VelocityNext.exe` → Select **"Run as administrator"**
 
@@ -326,7 +326,7 @@ On Linux, access to raw block devices requires root privileges or membership in 
 
 **Option 1: Run with sudo** (recommended for testing)
 ```bash
-sudo ./out/build/linux-release/Velocity/Velocity
+sudo ./out/build/linux-release/VelocityNext/VelocityNext
 ```
 
 **Option 2: Add user to disk group** (for regular use)
@@ -345,7 +345,7 @@ On macOS, access to raw disk devices typically requires administrator privileges
 
 **Run with sudo:**
 ```bash
-sudo ./out/build/macos-release/Velocity.app/Contents/MacOS/Velocity
+sudo ./out/build/macos-release/VelocityNext.app/Contents/MacOS/VelocityNext
 ```
 
 **Note**: Xbox 360 drives should appear as `/dev/disk*` or `/dev/rdisk*` devices.

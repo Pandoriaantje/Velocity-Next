@@ -37,7 +37,7 @@ jobs:
       - name: Package
         run: |
           mkdir release-linux
-          cp out/build/linux-release/Velocity/VelocityNext release-linux/
+          cp out/build/linux-release/VelocityNext/VelocityNext release-linux/
           cp out/build/linux-release/XboxInternals/libXboxInternals.so release-linux/
           cd release-linux
           tar -czf ../Velocity-Next-Linux.tar.gz *

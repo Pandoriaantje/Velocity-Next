@@ -438,4 +438,4 @@ message(STATUS "")
 # Subdirectories
 # ------------------------------
 add_subdirectory(XboxInternals)
-add_subdirectory(Velocity)
+add_subdirectory(Velocity VelocityNext)

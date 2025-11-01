@@ -37,7 +37,7 @@ jobs:
       - name: Create DMG
         run: |
           mkdir dmg-contents
-          cp -R out/build/macos-release/Velocity/Velocity.app dmg-contents/
+          cp -R out/build/macos-release/VelocityNext/VelocityNext.app dmg-contents/
           hdiutil create -volname "Velocity-Next" -srcfolder dmg-contents -ov -format UDZO Velocity-Next-macOS.dmg
       
       - name: Upload artifact
