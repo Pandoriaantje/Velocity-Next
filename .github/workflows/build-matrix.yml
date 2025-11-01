@@ -11,19 +11,21 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
-        compiler: [mingw, msvc]
-        exclude:
-          - os: macos-latest
+        include:
+          - os: windows-latest
             compiler: mingw
+            name: Windows (MinGW)
+          - os: windows-latest
+            compiler: msvc
+            name: Windows (MSVC)
           - os: macos-latest
-            compiler: msvc
+            compiler: clang
+            name: macOS
           - os: ubuntu-latest
-            compiler: mingw
-          - os: ubuntu-latest
-            compiler: msvc
+            compiler: gcc
+            name: Linux
     runs-on: ${{ matrix.os }}
-    name: Build ${{ matrix.os }} (${{ matrix.compiler }})
+    name: ${{ matrix.name }}
     
     steps:
       - name: Checkout code
