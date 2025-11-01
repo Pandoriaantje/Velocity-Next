@@ -3,7 +3,7 @@ set -e
 
 # Default build directory, can be overridden with first argument
 BUILD_DIR="${1:-out/build/macos-release}"
-APP_BUNDLE="$BUILD_DIR/Velocity.app"
+APP_BUNDLE="$BUILD_DIR/VelocityNext/VelocityNext.app"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENTITLEMENTS="$SCRIPT_DIR/app.entitlements"
 
