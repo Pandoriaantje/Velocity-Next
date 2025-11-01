@@ -14,6 +14,11 @@ jobs:
         with:
           submodules: recursive
       
+      - name: Setup MSVC Developer Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -24,9 +29,6 @@ jobs:
           modules: 'qtnetworkauth'
           cache: true
           add-tools-to-path: true
-      
-      - name: Setup MSVC
-        uses: microsoft/setup-msbuild@v2
       
       - name: Configure CMake
         run: cmake --preset windows-msvc-release

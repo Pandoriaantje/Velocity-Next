@@ -100,6 +100,12 @@ jobs:
         shell: pwsh
       
       # Windows MSVC setup
+      - name: Setup MSVC Developer Environment
+        if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      
       - name: Install Qt (Windows MSVC)
         if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
         uses: jurplel/install-qt-action@v4
@@ -110,10 +116,6 @@ jobs:
           arch: 'win64_msvc2022_64'
           modules: 'qtnetworkauth'
           cache: true
-      
-      - name: Setup MSVC
-        if: matrix.os == 'windows-latest' && matrix.compiler == 'msvc'
-        uses: microsoft/setup-msbuild@v2
       
       # macOS setup
       - name: Install Qt (macOS)
