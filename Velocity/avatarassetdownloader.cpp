@@ -18,8 +18,6 @@ void AvatarAssetDownloader::BeginDownload()
 {
     manager->get(QNetworkRequest(QUrl("http://download.xboxlive.com/content/" + titleID +
             "/avataritems/" + guid + ".bin")));
-    //http->get("http://download.xboxlive.com/content/" + titleID + "/avataritems/" + guid + ".bin");
-    //idToSkip = http->currentId();
 }
 
 QString AvatarAssetDownloader::GetV1TempPath()
@@ -50,10 +48,9 @@ void AvatarAssetDownloader::onRequestFinished(QNetworkReply *aReply)
         return;
     }
 
-    // verify that the file was downloaded
     DWORD fileSize = aReply->bytesAvailable();
 
-    // all assets have a Ytgr header that's 0x140 bytes
+    // All assets have a Ytgr header that's 0x140 bytes
     if (fileSize < 0x140)
     {
         if (!v2Done)
@@ -69,7 +66,7 @@ void AvatarAssetDownloader::onRequestFinished(QNetworkReply *aReply)
         return;
     }
 
-    // read the crap away, we don't need it
+    // Skip 0x140 byte Ytgr header
     BYTE temp[0x140];
     aReply->read((char*)temp, 0x140);
 
@@ -80,19 +77,15 @@ void AvatarAssetDownloader::onRequestFinished(QNetworkReply *aReply)
     else
         v2TempPath = tempPath;
 
-    // create a new temporary file
     QFile v1File(tempPath);
     v1File.open(QFile::Truncate | QFile::WriteOnly);
-    // Write the STRB file to the local disk
     v1File.write(aReply->readAll());
 
-    // clean up
     v1File.flush();
     v1File.close();
 
     v1Done = true;
 
-    // download the v2 file
     if (!v2Done)
     {
         v2Done = true;
@@ -105,8 +98,6 @@ void AvatarAssetDownloader::onRequestFinished(QNetworkReply *aReply)
 
 void AvatarAssetDownloader::onDone(bool /* error */)
 {
-    //if (!error)
-    //emit FinishedDownloading();
 }
 
 

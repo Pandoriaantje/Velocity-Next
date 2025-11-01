@@ -1,7 +1,6 @@
 #ifndef PROFILEEDITOR_H
 #define PROFILEEDITOR_H
 
-// qt
 #include <QDialog>
 #include <QMessageBox>
 #include <QtNetwork/QNetworkAccessManager>
@@ -17,7 +16,6 @@
 #include <QMap>
 #include "qthelpers.h"
 
-// xbox360
 #include <XboxInternals/Stfs/StfsPackage.h>
 #include <XboxInternals/Gpd/DashboardGpd.h>
 #include <XboxInternals/Gpd/GameGpd.h>
@@ -26,7 +24,6 @@
 #include <XboxInternals/Account/Account.h>
 #include <XboxInternals/Account/AccountHelpers.h>
 
-// other
 #include <iostream>
 #include <vector>
 #include <stdio.h>

@@ -65,7 +65,6 @@ void XContentHeader::readMetadata()
             }
         }
 
-        // header hash / content id
         io->ReadBytes(headerHash, 0x14);
 
         headerSize = io->ReadDword();
@@ -73,7 +72,6 @@ void XContentHeader::readMetadata()
         // to do: make sure it's a valid type
         contentType = (ContentType)io->ReadDword();
 
-        // read metadata information
         metaDataVersion = io->ReadDword();
         contentSize = io->ReadUInt64();
         mediaID = io->ReadDword();

@@ -35,18 +35,16 @@ StfsPackage::StfsPackage(string packagePath, DWORD flags) :
 
 void StfsPackage::Init()
 {
-    // if we need to create a file, then do it yo
     if (flags & StfsPackageCreate)
     {
         DWORD headerSize = (flags & StfsPackagePEC) ? ((flags & StfsPackageFemale) ? 0x2000 : 0x1000) : ((
             flags & StfsPackageFemale) ? 0xB000 : 0xA000);
         BYTE zeroBuffer[0x1000] = { 0 };
 
-        // Write all null bytes for the header
         for (DWORD i = 0; i < ((headerSize >> 0xC) + ((flags & StfsPackageFemale) ? 1 : 2) + 1); i++)
             io->Write(zeroBuffer, 0x1000);
 
-        // if it's female, then we need to Write it to the volume descriptor
+        // Female packages store block separation in volume descriptor
         io->SetPosition((flags & StfsPackagePEC) ? 0x246 : 0x37B);
         io->Write((flags & StfsPackageFemale) >> 2);
     }
@@ -72,7 +70,7 @@ void StfsPackage::Parse()
     else
         metaData = new XContentHeader(io, (flags & StfsPackagePEC));
 
-    // if the pacakge was created, then give all the metadata a default value
+    // Initialize metadata with default values for new packages
     if (flags & StfsPackageCreate)
     {
         metaData->magic = CON;
@@ -106,7 +104,6 @@ void StfsPackage::Parse()
         memset(metaData->consoleID, 0, 5);
         memset(metaData->profileID, 0, 8);
 
-        // volume descriptor
         metaData->stfsVolumeDescriptor.size = 0x24;
         metaData->stfsVolumeDescriptor.blockSeparation = ((flags & StfsPackageFemale) >> 2);
         metaData->stfsVolumeDescriptor.fileTableBlockCount = 1;
@@ -134,12 +131,10 @@ void StfsPackage::Parse()
 
         metaData->WriteMetaData();
 
-        // set the first block to allocated
         io->SetPosition(((headerSize + 0xFFF) & 0xFFFFF000) + 0x14);
         io->Write((DWORD)0x80FFFFFF);
     }
 
-    // make sure the file system is STFS
     if (metaData->fileSystem != FileSystemSTFS && (flags & StfsPackagePEC) == 0)
         throw string("STFS: Invalid file system header.\n");
 
@@ -156,10 +151,9 @@ void StfsPackage::Parse()
         blockStep[1] = 0x723A;
     }
 
-    // address of the first hash table in the package, comes right after the header
+    // Address of the first hash table in the package, comes right after the header
     firstHashTableAddress = (metaData->headerSize + 0x0FFF) & 0xFFFFF000;
 
-    // calculate the number of tables per level
     tablesPerLevel[0] = (metaData->stfsVolumeDescriptor.allocatedBlockCount / 0xAA) + ((
         metaData->stfsVolumeDescriptor.allocatedBlockCount % 0xAA != 0) ? 1 : 0);
     tablesPerLevel[1] = (tablesPerLevel[0] / 0xAA) + ((tablesPerLevel[0] % 0xAA != 0 &&
@@ -167,10 +161,8 @@ void StfsPackage::Parse()
     tablesPerLevel[2] = (tablesPerLevel[1] / 0xAA) + ((tablesPerLevel[1] % 0xAA != 0 &&
         metaData->stfsVolumeDescriptor.allocatedBlockCount > 0x70E4) ? 1 : 0);
 
-    // calculate the level of the top table
     topLevel = CalcualateTopLevel();
 
-    // read in the top hash table
     topTable.trueBlockNumber = ComputeLevelNBackingHashBlockNumber(0, topLevel);
     topTable.level = topLevel;
 
@@ -320,10 +312,8 @@ HashEntry StfsPackage::GetBlockHashEntry(DWORD blockNum)
     if (blockNum >= metaData->stfsVolumeDescriptor.allocatedBlockCount)
         throw string("STFS: Reference to illegal block number.\n");
 
-    // go to the position of the hash address
     io->SetPosition(GetHashAddressOfBlock(blockNum));
 
-    // read the hash entry
     HashEntry he;
     io->ReadBytes(he.blockHash, 0x14);
     he.status = io->ReadByte();
@@ -337,14 +327,11 @@ void StfsPackage::ExtractBlock(DWORD blockNum, BYTE* data, DWORD length)
     if (blockNum >= metaData->stfsVolumeDescriptor.allocatedBlockCount)
         throw string("STFS: Reference to illegal block number.\n");
 
-    // check for an invalid block length
     if (length > 0x1000)
         throw string("STFS: length cannot be greater 0x1000.\n");
 
-    // go to the block's position
     io->SetPosition(BlockToAddress(blockNum));
 
-    // read the data, and return
     io->ReadBytes(data, length);
 }
 
@@ -485,10 +472,10 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
         return;
     }
 
-    // check if all the blocks are consecutive
+    // Optimize extraction for consecutive blocks
     if (entry->flags & 1)
     {
-        // allocate 0xAA blocks of memory, for maximum efficiency, yo
+        // Allocate buffer for 0xAA blocks (optimal read size)
         BYTE* buffer = new BYTE[0xAA000];
 
         // seek to the beginning of the file
@@ -605,7 +592,6 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
         }
     }
 
-    // cleanup
     outFile.Close();
 }
 
@@ -732,20 +718,16 @@ vector<string> StfsPackage::SplitString(string str, string delimeter)
     vector<string> splits;
     string temp;
 
-    // find the next '\' in the string
     while (str.find(delimeter, 0) != string::npos)
     {
-        // get the substring from the begginging of the string, to the next '\'
         size_t pos = str.find(delimeter, 0);
         temp = str.substr(0, pos);
         str.erase(0, pos + delimeter.size());
 
-        // only add it if the substring is not null
         if (temp.size() > 0)
             splits.push_back(temp);
     }
 
-    // add the last one
     splits.push_back(str);
     return splits;
 }
@@ -1071,7 +1053,6 @@ void StfsPackage::SwapTable(DWORD index, Level lvl)
         io->SetPosition(tablePos + (i * 0x18));
     }
 
-    // good boys free their memory
     delete[] tableStatuses;
 
 }
