@@ -139,7 +139,6 @@ jobs:
           version: '6.8.0'
           host: 'linux'
           target: 'desktop'
-          arch: 'gcc_64'
           modules: 'qtnetworkauth'
           cache: true
       
