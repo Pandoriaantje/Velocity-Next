@@ -213,3 +213,4 @@ TEST_PLAN.md
 .github/prompts/
 
 CMakeUserPresets.json
+CMakeSettings.json

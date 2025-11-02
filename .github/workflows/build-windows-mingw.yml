@@ -27,8 +27,9 @@ jobs:
           add-tools-to-path: true
       
       - name: Setup MinGW environment
+        id: mingw-setup
         run: |
-          $qtRoot = "${{ env.QT_ROOT_DIR }}"
+          $qtRoot = "$env:QT_ROOT_DIR"
           echo "Qt root: $qtRoot"
           
           $mingwPath = $null
@@ -90,10 +91,10 @@ jobs:
           echo "  GCC: $gccPath"
           echo "  G++: $gxxPath"
           
-          # Set environment variables
-          echo "MINGW_PATH=$mingwPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CMAKE_C_COMPILER=$gccPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          echo "CMAKE_CXX_COMPILER=$gxxPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          # Set step outputs
+          echo "mingw-path=$mingwPath" >> $env:GITHUB_OUTPUT
+          echo "c-compiler=$gccPath" >> $env:GITHUB_OUTPUT
+          echo "cxx-compiler=$gxxPath" >> $env:GITHUB_OUTPUT
           
           # Test compiler version
           & $gxxPath --version
@@ -101,15 +102,15 @@ jobs:
       
       - name: Configure CMake
         run: |
-          $env:PATH = "${{ env.MINGW_PATH }};$env:PATH"
+          $env:PATH = "${{ steps.mingw-setup.outputs.mingw-path }};$env:PATH"
           cmake --preset windows-mingw-release `
-            -DCMAKE_C_COMPILER="${{ env.CMAKE_C_COMPILER }}" `
-            -DCMAKE_CXX_COMPILER="${{ env.CMAKE_CXX_COMPILER }}"
+            -DCMAKE_C_COMPILER="${{ steps.mingw-setup.outputs.c-compiler }}" `
+            -DCMAKE_CXX_COMPILER="${{ steps.mingw-setup.outputs.cxx-compiler }}"
         shell: pwsh
       
       - name: Build
         run: |
-          $env:PATH = "${{ env.MINGW_PATH }};$env:PATH"
+          $env:PATH = "${{ steps.mingw-setup.outputs.mingw-path }};$env:PATH"
           cmake --build --preset windows-mingw-release
         shell: pwsh
       
