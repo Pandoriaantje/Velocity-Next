@@ -211,3 +211,5 @@ TEST_PLAN.md
 .vscode/
 .github/copilot-instructions.md
 .github/prompts/
+
+CMakeUserPresets.json

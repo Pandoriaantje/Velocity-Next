@@ -19,6 +19,7 @@
     {
       "name": "windows-mingw-release",
       "displayName": "Windows MinGW Release",
+      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/windows-mingw-release",
       "cacheVariables": {
@@ -28,7 +29,8 @@
     },
     {
       "name": "windows-mingw-debug",
-      "displayName": "Windows MinGW Debug", 
+      "displayName": "Windows MinGW Debug",
+      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/windows-mingw-debug",
       "cacheVariables": {
@@ -38,7 +40,8 @@
     },
     {
       "name": "macos-release",
-      "displayName": "macOS Release", 
+      "displayName": "macOS Release",
+      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/macos-release",
       "cacheVariables": {
@@ -48,7 +51,8 @@
     },
     {
       "name": "macos-debug",
-      "displayName": "macOS Debug", 
+      "displayName": "macOS Debug",
+      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/macos-debug",
       "cacheVariables": {
@@ -59,6 +63,7 @@
     {
       "name": "linux-release",
       "displayName": "Linux Release",
+      "hidden": true,
       "generator": "Ninja", 
       "binaryDir": "${sourceDir}/out/build/linux-release",
       "cacheVariables": {
@@ -69,6 +74,7 @@
     {
       "name": "linux-debug",
       "displayName": "Linux Debug",
+      "hidden": true,
       "generator": "Ninja", 
       "binaryDir": "${sourceDir}/out/build/linux-debug",
       "cacheVariables": {
