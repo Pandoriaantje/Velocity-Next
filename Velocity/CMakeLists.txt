@@ -158,6 +158,7 @@ target_link_libraries(VelocityNext
     Qt6::Xml
     Qt6::Widgets  
     Qt6::Network
+    Qt6::Concurrent
     XboxInternals::XboxInternals  # Use namespaced target (modern CMake)
     BotanAmalgamation  # Our custom amalgamation on ALL platforms
     velocity_compiler_flags  # Inherit common compile options

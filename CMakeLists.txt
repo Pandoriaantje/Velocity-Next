@@ -189,6 +189,9 @@ endif()
 
 message(STATUS "Found Qt6 ${Qt6Core_VERSION} at: ${Qt6Core_DIR}")
 
+# Find Qt6Concurrent separately (needed for isodialog.cpp)
+find_package(Qt6 COMPONENTS Concurrent REQUIRED)
+
 # Make cmake/ available
 list(PREPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 

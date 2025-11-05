@@ -185,10 +185,18 @@ std::vector<IsoEntry> IsoImage::listEntries() const {
     return impl_->entries;
 }
 
-bool IsoImage::extractFile(const IsoEntry& entry, const std::string& outputDir) {
+bool IsoImage::extractFile(const IsoEntry& entry, const std::string& outputDir,
+                           void(*progress)(void*, uint32_t, uint32_t), void *arg) {
     if (!impl_->file.is_open()) return false;
     if (entry.type != IsoEntryType::File) return false;
-    if (entry.size == 0) return true;  // Empty file, nothing to extract
+    
+    // Handle empty files
+    if (entry.size == 0) {
+        if (progress) {
+            progress(arg, 1, 1);  // Report complete
+        }
+        return true;
+    }
 
     // Create full directory structure from entry.path
     fs::path fullPath = fs::path(outputDir) / entry.path;
@@ -205,6 +213,7 @@ bool IsoImage::extractFile(const IsoEntry& entry, const std::string& outputDir) 
     impl_->file.seekg(static_cast<std::streamoff>(entry.offset), std::ios::beg);
     
     uint64_t remaining = entry.size;
+    uint64_t totalRead = 0;
     constexpr size_t bufferSize = 65536;
     std::vector<char> buffer(bufferSize);
 
@@ -216,12 +225,30 @@ bool IsoImage::extractFile(const IsoEntry& entry, const std::string& outputDir) 
         
         of.write(buffer.data(), bytesRead);
         remaining -= bytesRead;
+        totalRead += bytesRead;
+        
+        // Report progress: (current bytes, total bytes)
+        if (progress && entry.size > 0) {
+            progress(arg, static_cast<uint32_t>(totalRead), 
+                         static_cast<uint32_t>(entry.size));
+        }
     }
 
     return remaining == 0;
 }
 
-bool IsoImage::extractAll(const std::string& outputDir) {
+bool IsoImage::extractAll(const std::string& outputDir,
+                          void(*progress)(void*, uint32_t, uint32_t), void *arg) {
+    // Count total files for progress reporting
+    uint32_t totalFiles = 0;
+    for (const auto& entry : impl_->entries) {
+        if (entry.type == IsoEntryType::File) {
+            totalFiles++;
+        }
+    }
+    
+    uint32_t completedFiles = 0;
+    
     for (const auto& entry : impl_->entries) {
         if (entry.type == IsoEntryType::File) {
             // Create subdirectory structure
@@ -232,9 +259,18 @@ bool IsoImage::extractAll(const std::string& outputDir) {
             fs::create_directories(dir, ec);
             if (ec) continue;
 
+            // Handle empty files
+            if (entry.size == 0) {
+                completedFiles++;
+                if (progress) {
+                    progress(arg, completedFiles, totalFiles);
+                }
+                continue;
+            }
+
             // Extract to proper path
             std::ofstream of(fullPath, std::ios::binary);
-            if (!of || entry.size == 0) continue;
+            if (!of) continue;
 
             impl_->file.seekg(static_cast<std::streamoff>(entry.offset), std::ios::beg);
             
@@ -250,6 +286,12 @@ bool IsoImage::extractAll(const std::string& outputDir) {
                 
                 of.write(buffer.data(), bytesRead);
                 remaining -= bytesRead;
+            }
+            
+            // Report progress after each file completes
+            completedFiles++;
+            if (progress) {
+                progress(arg, completedFiles, totalFiles);
             }
         }
     }

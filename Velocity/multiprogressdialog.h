@@ -5,6 +5,8 @@
 #include <QDialog>
 #include <QMessageBox>
 #include <QDir>
+#include <QThread>
+#include <QMutex>
 #include "qthelpers.h"
 
 // xbox
@@ -37,6 +39,29 @@ class MultiProgressDialog;
 
 void updateProgress(void *form, DWORD curProgress, DWORD total);
 
+// Forward declaration
+class MultiProgressDialog;
+
+// Worker thread for extraction operations
+class ExtractionWorker : public QThread
+{
+    Q_OBJECT
+
+public:
+    ExtractionWorker(MultiProgressDialog *dialog);
+    void run() override;
+
+signals:
+    void progressUpdate(int fileIndex, DWORD curProgress, DWORD total);
+    void fileComplete(int fileIndex);
+    void extractionComplete(bool success, QString errorMessage);
+    void windowTitleUpdate(QString title);
+    void groupBoxTitleUpdate(QString title);
+
+private:
+    MultiProgressDialog *dialog_;
+};
+
 class MultiProgressDialog : public QDialog
 {
     Q_OBJECT
@@ -48,6 +73,13 @@ public:
     ~MultiProgressDialog();
 
     void start();
+
+private slots:
+    void onProgressUpdate(int fileIndex, DWORD curProgress, DWORD total);
+    void onFileComplete(int fileIndex);
+    void onExtractionComplete(bool success, QString errorMessage);
+    void onWindowTitleUpdate(QString title);
+    void onGroupBoxTitleUpdate(QString title);
 
 private:
     Ui::MultiProgressDialog *ui;
@@ -62,10 +94,13 @@ private:
     QString rootPath;
     Operation op;
     FatxFileEntry *parentEntry;
+    QMutex progressMutex_;  // Protect progress updates from multiple threads
+    ExtractionWorker *worker_;
 
     void operateOnNextFile();
 
     friend void updateProgress(void *form, DWORD curProgress, DWORD total);
+    friend class ExtractionWorker;
 };
 
 #endif // MULTIPROGRESSDIALOG_H

@@ -25,10 +25,14 @@ public:
     std::vector<IsoEntry> listEntries() const;
 
     // Extract a single file to the output directory
-    bool extractFile(const IsoEntry& entry, const std::string& outputDir);
+    bool extractFile(const IsoEntry& entry, const std::string& outputDir,
+                     void(*progress)(void*, uint32_t, uint32_t) = nullptr,
+                     void *arg = nullptr);
 
     // Extract all files to the output directory
-    bool extractAll(const std::string& outputDir);
+    bool extractAll(const std::string& outputDir,
+                    void(*progress)(void*, uint32_t, uint32_t) = nullptr,
+                    void *arg = nullptr);
 
     // Create XISO from directory
     static bool createFromDirectory(const std::string& inputDir, const std::string& outputIso);

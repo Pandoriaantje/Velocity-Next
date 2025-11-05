@@ -23,6 +23,9 @@
 #include <QBuffer>
 #include <QStringDecoder>
 #include <QStringConverter>
+#include <QProgressDialog>
+#include <QTimer>
+#include <QtConcurrent/QtConcurrent>
 #include <fstream>
 #include "XboxInternals/Iso/IsoImage.h"
 #include "XboxInternals/Iso/XexExecutable.h"
@@ -290,10 +293,42 @@ void IsoDialog::onExtractAll() {
 
     QString fullOutDir = outDir + "/" + folderName;
     
-    if (iso_->extractAll(fullOutDir.toStdString())) {
-        QMessageBox::information(this, tr("Success"), tr("Batch export completed to:\n%1").arg(fullOutDir));
-    } else {
-        QMessageBox::warning(this, tr("Error"), tr("Batch export failed"));
+    // Create progress dialog
+    extractionProgress_ = new QProgressDialog(tr("Extracting ISO..."), QString(), 0, 100, this);
+    extractionProgress_->setWindowModality(Qt::WindowModal);
+    extractionProgress_->setMinimumDuration(0);
+    extractionProgress_->setValue(0);
+    extractionProgress_->setAutoClose(false);  // Don't auto-close when reaching 100%
+    extractionProgress_->setAutoReset(false);  // Don't auto-reset
+    
+    // Setup watcher for extraction (only once)
+    if (!extractionWatcher_) {
+        extractionWatcher_ = new QFutureWatcher<ExtractionResult>(this);
+        connect(extractionWatcher_, &QFutureWatcher<ExtractionResult>::finished,
+                this, &IsoDialog::onExtractionFinished);
+        // Connect progress signal (only once)
+        connect(this, &IsoDialog::extractionProgressUpdate, this, &IsoDialog::onProgressUpdate);
+    }
+    
+    // Run extraction in background
+    auto future = QtConcurrent::run([this, fullOutDir]() -> ExtractionResult {
+        // Progress callback that emits signal (non-capturing lambda compatible with function pointer)
+        auto progressCallback = [](void* arg, uint32_t current, uint32_t total) {
+            IsoDialog* dialog = static_cast<IsoDialog*>(arg);
+            emit dialog->extractionProgressUpdate(static_cast<int>(current), static_cast<int>(total));
+        };
+        
+        bool success = iso_->extractAll(fullOutDir.toStdString(), progressCallback, this);
+        return ExtractionResult{success, 0, "", fullOutDir};
+    });
+    
+    extractionWatcher_->setFuture(future);
+}
+
+void IsoDialog::onProgressUpdate(int current, int total) {
+    if (extractionProgress_) {
+        extractionProgress_->setMaximum(total);
+        extractionProgress_->setValue(current);
     }
 }
 
@@ -534,5 +569,29 @@ void IsoDialog::onExpandAll() {
 
 void IsoDialog::onCollapseAll() {
     tree_->collapseAll();
+}
+
+void IsoDialog::onExtractionFinished() {
+    // Close and cleanup progress dialog first
+    if (extractionProgress_) {
+        extractionProgress_->reset();  // Reset before deleting to avoid issues
+        extractionProgress_->deleteLater();  // Use deleteLater instead of immediate delete
+        extractionProgress_ = nullptr;
+    }
+    
+    // Get result before showing message box
+    if (extractionWatcher_) {
+        auto result = extractionWatcher_->result();
+        
+        // Use QTimer::singleShot to show message box after event loop processes deletion
+        QTimer::singleShot(100, this, [this, result]() {
+            if (result.success) {
+                QMessageBox::information(this, tr("Success"), 
+                    tr("Batch export completed to:\n%1").arg(result.outputPath));
+            } else {
+                QMessageBox::warning(this, tr("Error"), tr("Batch export failed"));
+            }
+        });
+    }
 }
 

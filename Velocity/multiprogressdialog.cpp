@@ -1,5 +1,158 @@
 #include "multiprogressdialog.h"
 #include "ui_multiprogressdialog.h"
+#include <QTimer>
+#include <QMutexLocker>
+
+// ExtractionWorker implementation
+ExtractionWorker::ExtractionWorker(MultiProgressDialog *dialog)
+    : QThread(dialog), dialog_(dialog)
+{
+}
+
+void ExtractionWorker::run()
+{
+    // This runs on the worker thread, not the main GUI thread
+    try
+    {
+        for (int i = 0; i < dialog_->internalFiles.size(); i++)
+        {
+            if (isInterruptionRequested())
+            {
+                emit extractionComplete(false, "Extraction cancelled by user");
+                return;
+            }
+
+            dialog_->fileIndex = i;
+            dialog_->prevProgress = 0;
+
+            switch (dialog_->system)
+            {
+                case FileSystemSTFS:
+                {
+                    StfsExtractEntry *entry = reinterpret_cast<StfsExtractEntry*>(dialog_->internalFiles.at(i));
+                    
+                    emit windowTitleUpdate("Extracting " + QString::fromStdString(entry->entry->name));
+
+                    try
+                    {
+                        // Make all the directories needed
+                        QString dirPath = QDir::toNativeSeparators(dialog_->outDir + entry->path).replace("\\", "/");
+                        std::string dirPathStd = dirPath.toStdString();
+
+                        if (dialog_->internalFiles.size() != 1)
+                        {
+                            QDir saveDir(dirPath);
+                            if (!saveDir.exists())
+                                saveDir.mkpath(dirPath);
+                            dirPathStd += entry->entry->name;
+                        }
+
+                        StfsPackage *package = reinterpret_cast<StfsPackage*>(dialog_->device);
+                        package->ExtractFile(entry->entry, dirPathStd, updateProgress, dialog_);
+                        
+                        delete entry;
+                    }
+                    catch (const std::exception& e)
+                    {
+                        emit extractionComplete(false, 
+                            QString("Error extracting '%1': %2")
+                                .arg(QString::fromStdString(entry->entry->name))
+                                .arg(e.what()));
+                        return;
+                    }
+                    catch (string error)
+                    {
+                        emit extractionComplete(false, 
+                            QString("Error extracting '%1': %2")
+                                .arg(QString::fromStdString(entry->entry->name))
+                                .arg(QString::fromStdString(error)));
+                        return;
+                    }
+                    catch (...)
+                    {
+                        emit extractionComplete(false, 
+                            QString("Unknown error extracting '%1'")
+                                .arg(QString::fromStdString(entry->entry->name)));
+                        return;
+                    }
+                    break;
+                }
+                case FileSystemSVOD:
+                {
+                    GdfxFileEntry *entry = reinterpret_cast<GdfxFileEntry*>(dialog_->internalFiles.at(i));
+                    
+                    emit windowTitleUpdate("Extracting " + QString::fromStdString(entry->name));
+
+                    SVOD *svod = reinterpret_cast<SVOD*>(dialog_->device);
+                    SvodIO io = svod->GetSvodIO(*entry);
+
+                    try
+                    {
+                        io.SaveFile(dialog_->outDir.toStdString() + entry->name, updateProgress, dialog_);
+                        io.Close();
+                    }
+                    catch (string error)
+                    {
+                        emit extractionComplete(false, 
+                            QString("Error extracting '%1': %2")
+                                .arg(QString::fromStdString(entry->name))
+                                .arg(QString::fromStdString(error)));
+                        return;
+                    }
+                    break;
+                }
+                case FileSystemFATX:
+                {
+                    emit groupBoxTitleUpdate("Overall Progress - " + QString::number(i + 1) + " of " + 
+                                           QString::number(dialog_->internalFiles.size()));
+
+                    FatxFileEntry *entry = reinterpret_cast<FatxFileEntry*>(dialog_->internalFiles.at(i));
+
+                    if (entry->fileAttributes & FatxDirectory)
+                        continue;
+
+                    emit windowTitleUpdate("Copying " + QString::fromStdString(entry->name));
+
+                    FatxDrive *drive = reinterpret_cast<FatxDrive*>(dialog_->device);
+                    FatxIO io = drive->GetFatxIO(entry);
+
+                    try
+                    {
+                        QString temp = QString::fromStdString(entry->path);
+                        QString dirPath = QDir::toNativeSeparators(dialog_->outDir + temp.replace(dialog_->rootPath, ""));
+                        QDir saveDir(dirPath);
+
+                        if (!saveDir.exists())
+                            saveDir.mkpath(dirPath);
+
+                        io.SaveFile(dirPath.toStdString() + entry->name, updateProgress, dialog_);
+                    }
+                    catch (string error)
+                    {
+                        emit extractionComplete(false, 
+                            QString("Error copying '%1': %2")
+                                .arg(QString::fromStdString(entry->name))
+                                .arg(QString::fromStdString(error)));
+                        return;
+                    }
+
+                    dialog_->prevProgress = 0;
+                    break;
+                }
+            }
+        }
+
+        emit extractionComplete(true, "");
+    }
+    catch (const std::exception& e)
+    {
+        emit extractionComplete(false, QString("Extraction failed: %1").arg(e.what()));
+    }
+    catch (...)
+    {
+        emit extractionComplete(false, "Unknown extraction error occurred");
+    }
+}
 
 MultiProgressDialog::MultiProgressDialog(Operation op, FileSystem fileSystem, void *device,
         QString outDir, QList<void *> internalFiles, QWidget *parent, QString rootPath,
@@ -7,7 +160,7 @@ MultiProgressDialog::MultiProgressDialog(Operation op, FileSystem fileSystem, vo
     QDialog(parent),ui(new Ui::MultiProgressDialog), system(fileSystem), device(device), outDir(outDir),
     internalFiles(internalFiles),
     fileIndex(0), overallProgress(0), overallProgressTotal(0), prevProgress(0), rootPath(rootPath),
-    op(op), parentEntry(parentEntry)
+    op(op), parentEntry(parentEntry), worker_(nullptr)
 {
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     ui->setupUi(this);
@@ -32,6 +185,12 @@ MultiProgressDialog::MultiProgressDialog(Operation op, FileSystem fileSystem, vo
 
 MultiProgressDialog::~MultiProgressDialog()
 {
+    if (worker_)
+    {
+        worker_->requestInterruption();
+        worker_->wait(5000);  // Wait up to 5 seconds
+        delete worker_;
+    }
     delete ui;
 }
 
@@ -64,7 +223,70 @@ void MultiProgressDialog::start()
     }
 
     ui->progressBar_2->setMaximum(overallProgressTotal);
-    operateOnNextFile();
+    
+    // For extraction operations, use worker thread
+    if (op == OpExtract)
+    {
+        worker_ = new ExtractionWorker(this);
+        
+        // Connect signals from worker to UI update slots
+        connect(worker_, &ExtractionWorker::progressUpdate, this, &MultiProgressDialog::onProgressUpdate);
+        connect(worker_, &ExtractionWorker::fileComplete, this, &MultiProgressDialog::onFileComplete);
+        connect(worker_, &ExtractionWorker::extractionComplete, this, &MultiProgressDialog::onExtractionComplete);
+        connect(worker_, &ExtractionWorker::windowTitleUpdate, this, &MultiProgressDialog::onWindowTitleUpdate);
+        connect(worker_, &ExtractionWorker::groupBoxTitleUpdate, this, &MultiProgressDialog::onGroupBoxTitleUpdate);
+        
+        worker_->start();
+    }
+    else
+    {
+        // For other operations (inject, etc.), use original synchronous approach
+        operateOnNextFile();
+    }
+}
+
+void MultiProgressDialog::onProgressUpdate(int fileIndex, DWORD curProgress, DWORD total)
+{
+    QMutexLocker locker(&progressMutex_);
+    
+    ui->progressBar->setValue(curProgress);
+    ui->progressBar->setMaximum(total);
+
+    if (system != FileSystemFATX)
+    {
+        overallProgress += (curProgress - prevProgress);
+        ui->progressBar_2->setValue(overallProgress);
+        prevProgress = curProgress;
+    }
+}
+
+void MultiProgressDialog::onFileComplete(int fileIndex)
+{
+    // File completed, progress update already handled
+}
+
+void MultiProgressDialog::onExtractionComplete(bool success, QString errorMessage)
+{
+    if (success)
+    {
+        close();
+    }
+    else
+    {
+        QMessageBox::critical(this, "Extraction Error", 
+            "An error occurred while extracting files.\n\n" + errorMessage);
+        close();
+    }
+}
+
+void MultiProgressDialog::onWindowTitleUpdate(QString title)
+{
+    setWindowTitle(title);
+}
+
+void MultiProgressDialog::onGroupBoxTitleUpdate(QString title)
+{
+    ui->groupBox_2->setTitle(title);
 }
 
 void MultiProgressDialog::operateOnNextFile()
@@ -72,7 +294,9 @@ void MultiProgressDialog::operateOnNextFile()
     // make sure there's another file to extract
     if (fileIndex == internalFiles.size())
     {
-        close();
+        // Use QTimer to close the dialog after returning from the callback
+        // This prevents crashes when closing during progress updates
+        QTimer::singleShot(0, this, &MultiProgressDialog::close);
         return;
     }
     prevProgress = 0;
@@ -265,21 +489,39 @@ void updateProgress(void *form, DWORD curProgress, DWORD total)
     // get the dialog back
     MultiProgressDialog *dialog = reinterpret_cast<MultiProgressDialog*>(form);
 
-    // update the ui
-    dialog->ui->progressBar->setValue(curProgress);
-    dialog->ui->progressBar->setMaximum(total);
-
-    if (dialog->system != FileSystemFATX)
+    // If worker thread exists, emit signals for thread-safe UI updates
+    if (dialog->worker_ && QThread::currentThread() == dialog->worker_)
     {
-        dialog->overallProgress += (curProgress - dialog->prevProgress);
-        dialog->ui->progressBar_2->setValue(dialog->overallProgress);
-        dialog->prevProgress = curProgress;
-
-        if (curProgress == total)
-            dialog->operateOnNextFile();
+        // We're on the worker thread - use signals
+        emit dialog->worker_->progressUpdate(dialog->fileIndex, curProgress, total);
+        
+        if (curProgress == total && dialog->system != FileSystemFATX)
+        {
+            emit dialog->worker_->fileComplete(dialog->fileIndex);
+        }
     }
+    else
+    {
+        // We're on the main thread (old synchronous path for inject operations)
+        dialog->ui->progressBar->setValue(curProgress);
+        dialog->ui->progressBar->setMaximum(total);
 
-    QApplication::processEvents();
+        if (dialog->system != FileSystemFATX)
+        {
+            dialog->overallProgress += (curProgress - dialog->prevProgress);
+            dialog->ui->progressBar_2->setValue(dialog->overallProgress);
+            dialog->prevProgress = curProgress;
+
+            if (curProgress == total)
+                dialog->operateOnNextFile();
+        }
+
+        // Process events for non-threaded operations
+        if (curProgress == total)
+        {
+            QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
+    }
 }
 
 
