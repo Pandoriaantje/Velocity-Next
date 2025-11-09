@@ -3,7 +3,14 @@
 
 #include <XboxInternals/TypeDefinitions.h>
 
-const DWORD dataBlocksPerHashTreeLevel[3] = { 0xAA, 0x70E4, 0x4AF768 };
+enum StfsPackageFlags
+{
+    StfsPackagePEC = 1,
+    StfsPackageCreate = 2,
+    StfsPackageFemale = 4,    // only used when creating a packge
+    StfsPackageDeleteIO = 8,
+    StfsPackageDontReadFileListing = 16
+};
 
 enum Sex
 {
@@ -85,7 +92,8 @@ enum ContentType
     XboxOriginalGame = 0x5000,
     XboxSavedGame = 0x60000,
     Xbox360Title = 0x1000,
-    XNA = 0xE0000
+    XNA = 0xE0000,
+    IndieGame = XNA
 };
 
 enum BlockStatusLevelZero

@@ -19,29 +19,28 @@
     {
       "name": "windows-mingw-release",
       "displayName": "Windows MinGW Release",
-      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/windows-mingw-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_STANDARD": "20"
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.3/mingw_64"
       }
     },
     {
       "name": "windows-mingw-debug",
       "displayName": "Windows MinGW Debug",
-      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/windows-mingw-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_STANDARD": "20"
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.8.3/mingw_64"
       }
     },
     {
       "name": "macos-release",
       "displayName": "macOS Release",
-      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/macos-release",
       "cacheVariables": {
@@ -52,7 +51,6 @@
     {
       "name": "macos-debug",
       "displayName": "macOS Debug",
-      "hidden": true,
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/macos-debug",
       "cacheVariables": {
@@ -63,7 +61,6 @@
     {
       "name": "linux-release",
       "displayName": "Linux Release",
-      "hidden": true,
       "generator": "Ninja", 
       "binaryDir": "${sourceDir}/out/build/linux-release",
       "cacheVariables": {
@@ -74,7 +71,6 @@
     {
       "name": "linux-debug",
       "displayName": "Linux Debug",
-      "hidden": true,
       "generator": "Ninja", 
       "binaryDir": "${sourceDir}/out/build/linux-debug",
       "cacheVariables": {

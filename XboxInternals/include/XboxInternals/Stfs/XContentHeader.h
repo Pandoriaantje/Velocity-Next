@@ -10,6 +10,7 @@
 #include "../Cryptography/XeCrypt.h"
 
 #include <iostream>
+#include <vector>
 
 #include <botan_all.h>
 
@@ -141,8 +142,8 @@ public:
     Version installerBaseVersion;
     Version installerVersion;
 
-    BYTE *thumbnailImage;
-    BYTE *titleThumbnailImage;
+    std::vector<BYTE> thumbnailImage;
+    std::vector<BYTE> titleThumbnailImage;
 
 private:
     BaseIO *io;

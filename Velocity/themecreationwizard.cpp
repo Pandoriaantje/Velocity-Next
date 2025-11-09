@@ -61,16 +61,18 @@ void ThemeCreationWizard::onFinished(int status)
         QBuffer buffer1(&ba1);
         buffer1.open(QIODevice::WriteOnly);
         ui->imgThumbnail->pixmap().save(&buffer1, "PNG");
-        theme->metaData->thumbnailImage = (BYTE*)ba1.data();
-        theme->metaData->thumbnailImageSize = ba1.length();
+    const auto *thumbStart = reinterpret_cast<const BYTE*>(ba1.constData());
+    theme->metaData->thumbnailImage.assign(thumbStart, thumbStart + ba1.size());
+    theme->metaData->thumbnailImageSize = static_cast<DWORD>(theme->metaData->thumbnailImage.size());
 
         // set title thumbnail image
         QByteArray ba2;
         QBuffer buffer2(&ba2);
         buffer2.open(QIODevice::WriteOnly);
         QPixmap(":/Images/defaultTitleImage.png").save(&buffer2, "PNG");
-        theme->metaData->titleThumbnailImage = (BYTE*)ba2.data();
-        theme->metaData->titleThumbnailImageSize = ba2.length();
+    const auto *titleThumbStart = reinterpret_cast<const BYTE*>(ba2.constData());
+    theme->metaData->titleThumbnailImage.assign(titleThumbStart, titleThumbStart + ba2.size());
+    theme->metaData->titleThumbnailImageSize = static_cast<DWORD>(theme->metaData->titleThumbnailImage.size());
 
         theme->metaData->WriteMetaData();
         theme->Rehash();

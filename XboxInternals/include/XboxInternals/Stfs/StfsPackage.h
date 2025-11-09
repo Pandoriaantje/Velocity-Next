@@ -8,7 +8,7 @@
 #include <time.h>
 #include <stdlib.h>
 #include <XboxInternals/IO/FileIO.h>
-#include <XboxInternals/Stfs/XContentHeader.h>
+#include <XboxInternals/Stfs/IXContentHeader.h>
 
 #include <botan_all.h>
 
@@ -18,6 +18,8 @@ using std::string;
 using std::stringstream;
 using std::hex;
 using std::vector;
+
+class StfsIO;
 
 struct StfsFileEntry
 {
@@ -32,6 +34,7 @@ struct StfsFileEntry
     DWORD createdTimeStamp;
     DWORD accessTimeStamp;
     DWORD fileEntryAddress;
+        vector<INT24> blockChain;
 };
 
 struct StfsFileListing
@@ -59,17 +62,10 @@ struct HashTable
     DWORD addressInFile;
 };
 
-enum StfsPackageFlags
-{
-    StfsPackagePEC = 1,
-    StfsPackageCreate = 2,
-    StfsPackageFemale = 4     // only used when creating a packge
-};
-
-class XBOXINTERNALS_EXPORT StfsPackage
+class XBOXINTERNALS_EXPORT StfsPackage : public IXContentHeader
 {
 public:
-    XContentHeader *metaData;
+        using IXContentHeader::metaData;
 
     // Description: initialize a stfs package from an already opened io
     StfsPackage(BaseIO *io, DWORD flags = 0);
@@ -91,6 +87,12 @@ public:
     // Description: get the file entry of a file's path, sets nameLen to '0' if not found
     StfsFileEntry GetFileEntry(string pathInPackage, bool checkFolders = false,
             StfsFileEntry *newEntry = NULL);
+
+    // Description: creates an StfsIO based off of the given path
+    StfsIO* GetStfsIO(string pathInPackage);
+
+    // Description: creates an StfsIO based off of the given entry
+    StfsIO* GetStfsIO(StfsFileEntry entry);
 
     // Description: get the first 4 bytes of a file
     DWORD GetFileMagic(string pathInPackage);
@@ -144,11 +146,14 @@ public:
     // Description: returns whether the 'isPEC' parameter is set
     bool IsPEC();
 
-    // Description: close the io and all other resources used
-    void Close();
+        // Description: close the io and all other resources used
+        void Close();
 
-    // Description: creates a folder in the specified directory
-    void CreateFolder(string pathInPackage);
+        // Description: creates a folder in the specified directory
+        void CreateFolder(string pathInPackage);
+
+        // Description: builds a block chain for the given entry
+        void GenerateBlockChain(StfsFileEntry *entry, bool forceRefresh = false);
 
     ~StfsPackage(void);
 private:
@@ -275,6 +280,8 @@ private:
 
     // Description: close the io/cleanup resources
     void Cleanup();
+
+        friend class StfsIO;
 };
 
 

@@ -21,6 +21,7 @@ set(SOURCES
   achievementcreationwizard.cpp
   addressconverterdialog.cpp
   avatarassetdownloader.cpp
+  boxartretriever.cpp
   certificatedialog.cpp
   clustertooldialog.cpp
   creationwizard.cpp
@@ -59,6 +60,8 @@ set(SOURCES
   svodfileinfodialog.cpp
   svodtooldialog.cpp
   isodialog.cpp
+  isosectordialog.cpp
+  xexdialog.cpp
   svodvolumedescriptordialog.cpp
   stfsvolumedescriptordialog.cpp
   themecreationwizard.cpp
@@ -106,6 +109,8 @@ set(UI_FORMS
   svodfileinfodialog.ui
   svodtooldialog.ui
   svodvolumedescriptordialog.ui
+  isosectordialog.ui
+  xexdialog.ui
   stfsvolumedescriptordialog.ui
   multiprogressdialog.ui
   ytgrdialog.ui

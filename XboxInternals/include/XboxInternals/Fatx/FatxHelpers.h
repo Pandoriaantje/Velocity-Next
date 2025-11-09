@@ -10,10 +10,8 @@
 #include <XboxInternals/TypeDefinitions.h>
 #include <XboxInternals/Export.h>
 
-class XBOXINTERNALS_EXPORT FATXHelpers
+class XBOXINTERNALSSHARED_EXPORT FATXHelpers
 {
 };
 
 #endif // FATXHELPERS_H
-
-

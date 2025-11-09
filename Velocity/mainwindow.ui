@@ -81,11 +81,12 @@
      </property>
      <addaction name="actionSTRB_File"/>
      <addaction name="actionXDBF_File"/>
+     <addaction name="actionISO"/>
      <addaction name="actionPackage"/>
      <addaction name="actionSVOD_System"/>
+     <addaction name="actionXEX"/>
+     <addaction name="actionXUIZ"/>
      <addaction name="actionYTGR"/>
-     <addaction name="separator"/>
-     <addaction name="actionISO_GOD_Viewer"/>
     </widget>
     <addaction name="menuOpen"/>
     <addaction name="actionCreate_Package"/>
@@ -215,7 +216,13 @@
      <normaloff>:/Images/packageIcon.png</normaloff>:/Images/packageIcon.png</iconset>
    </property>
    <property name="text">
-    <string>Package</string>
+    <string>Package (STFS)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open STFS packages including saved games, DLC, and downloadable content</string>
+   </property>
+   <property name="toolTip">
+    <string>Open STFS packages including saved games, DLC, and downloadable content</string>
    </property>
   </action>
   <action name="actionXDBF_File">
@@ -224,7 +231,13 @@
      <normaloff>:/Images/gpd.png</normaloff>:/Images/gpd.png</iconset>
    </property>
    <property name="text">
-    <string>GPD</string>
+    <string>GPD (XDBF File)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Xbox 360 Game Profile Data files containing achievements, gamer profiles, and game saves</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Xbox 360 Game Profile Data files containing achievements, gamer profiles, and game saves</string>
    </property>
   </action>
   <action name="actionSTRB_File">
@@ -233,7 +246,13 @@
      <normaloff>:/Images/strb.png</normaloff>:/Images/strb.png</iconset>
    </property>
    <property name="text">
-    <string>Avatar Asset</string>
+    <string>Avatar Asset (STRB File)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Xbox 360 avatar clothing, accessories, and customization items (.bin files)</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Xbox 360 avatar clothing, accessories, and customization items (.bin files)</string>
    </property>
   </action>
   <action name="actionTitle_ID_Finder">
@@ -348,7 +367,13 @@
      <normaloff>:/Images/svod.png</normaloff>:/Images/svod.png</iconset>
    </property>
    <property name="text">
-    <string>SVOD System</string>
+    <string>SVOD System (STFS)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Secure Virtual Optical Disc packages used for Games on Demand and installed disc content</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Secure Virtual Optical Disc packages used for Games on Demand and installed disc content</string>
    </property>
   </action>
   <action name="actionYTGR">
@@ -357,7 +382,13 @@
      <normaloff>:/Images/ytgr.png</normaloff>:/Images/ytgr.png</iconset>
    </property>
    <property name="text">
-    <string>YTGR</string>
+    <string>YTGR (Avatar Manifest)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open avatar manifest files containing avatar award and unlockable item data</string>
+   </property>
+   <property name="toolTip">
+    <string>Open avatar manifest files containing avatar award and unlockable item data</string>
    </property>
   </action>
   <action name="actionDevice_Viewer">
@@ -365,9 +396,45 @@
     <string>Raw Device Viewer</string>
    </property>
   </action>
-  <action name="actionISO_GOD_Viewer">
+  <action name="actionISO">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/iso.png</normaloff>:/Images/iso.png</iconset>
+   </property>
    <property name="text">
-    <string>ISO File</string>
+    <string>ISO (Disc Image)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Xbox 360 disc images for viewing game content and file structure</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Xbox 360 disc images for viewing game content and file structure</string>
+   </property>
+  </action>
+  <action name="actionXEX">
+   <property name="icon">
+    <iconset resource="Resources.qrc">
+     <normaloff>:/Images/XEXFileIcon.png</normaloff>:/Images/XEXFileIcon.png</iconset>
+   </property>
+   <property name="text">
+    <string>Xbox360 Executable (XEX)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Xbox 360 executable files to view header information, resources, and metadata</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Xbox 360 executable files to view header information, resources, and metadata</string>
+   </property>
+  </action>
+  <action name="actionXUIZ">
+   <property name="text">
+    <string>XUIZ (UI Package)</string>
+   </property>
+   <property name="statusTip">
+    <string>Open Xbox 360 user interface packages containing dashboard and application UI elements</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Xbox 360 user interface packages containing dashboard and application UI elements</string>
    </property>
   </action>
   <action name="actionThemeAuto">

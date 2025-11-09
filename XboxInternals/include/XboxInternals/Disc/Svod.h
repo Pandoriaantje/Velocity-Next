@@ -1,71 +1,49 @@
-#ifndef SVOD_H
-#define SVOD_H
+#pragma once
 
-#include <XboxInternals/IO/FileIO.h>
-#include <XboxInternals/IO/SvodMultiFileIO.h>
-#include <XboxInternals/Disc/Gdfx.h>
-#include <XboxInternals/Stfs/XContentHeader.h>
-#include <iostream>
+#include <string>
 #include <vector>
-#include <XboxInternals/IO/SvodIO.h>
-#include <algorithm>
-#include <botan_all.h>
 
 #include <XboxInternals/Export.h>
+#include <XboxInternals/Disc/Gdfx.h>
+#include <XboxInternals/IO/SvodIO.h>
+#include <XboxInternals/Stfs/IXContentHeader.h>
 
-using std::string;
-using std::vector;
+class BaseIO;
+class FatxDrive;
+class IndexableMultiFileIO;
 
-class XBOXINTERNALS_EXPORT SVOD
-{
+class XBOXINTERNALS_EXPORT SVOD : public IXContentHeader {
 public:
-    SVOD(string rootFile);
+    static std::vector<std::string> GetDataFilePaths(const std::string &rootDescriptorPath);
+
+    SVOD(std::string rootFile, FatxDrive *drive = nullptr, bool readFileListing = true);
     ~SVOD();
 
-    XContentHeader *metadata;
-    vector<GdfxFileEntry> root;
+    void Resign(std::string kvPath);
 
-    // get a SvodIO for the given entry
     SvodIO GetSvodIO(GdfxFileEntry entry);
+    SvodIO GetSvodIO(std::string path);
 
-    // get a SvodIO for the given entry
-    SvodIO GetSvodIO(string path);
-
-    // get the address and file index for a sector
     void SectorToAddress(DWORD sector, DWORD *addressInDataFile, DWORD *dataFileIndex);
-
-    // fix all of the hashes in the system
-    void Rehash(void (*progress)(DWORD, DWORD, void*) = NULL, void *arg = NULL);
-
-    // fix the RSA signature in the root descriptor
-    void Resign(string kvPath);
-
-    // Write a file entry back to the system
+    void Rehash(void (*progress)(DWORD, DWORD, void*) = nullptr, void *arg = nullptr);
     void WriteFileEntry(GdfxFileEntry *entry);
-
-    // get the total number of sectors in the system
     DWORD GetSectorCount();
 
+    std::vector<GdfxFileEntry> root;
+
 private:
-    string contentDirectory;
-    SvodMultiFileIO *io;
-    FileIO *rootFile;
+    void ReadFileListing(std::vector<GdfxFileEntry> *entryList, DWORD sector, int size, std::string path);
+    GdfxFileEntry GetFileEntry(std::string path, std::vector<GdfxFileEntry> *listing);
+    void HashBlock(BYTE *block, BYTE *outHash);
+    void GetFileListing();
+    std::string GetContentName();
+
+    std::string contentDirectory;
+    IndexableMultiFileIO *io;
+    BaseIO *rootFile;
     GdfxHeader header;
     DWORD baseAddress;
     DWORD offset;
-
-    // parse the file listing
-    void ReadFileListing(vector<GdfxFileEntry> *entryList, DWORD sector, int size, string path);
-
-    // get a file entry from the path, must start with a /
-    GdfxFileEntry GetFileEntry(string path, vector<GdfxFileEntry> *listing);
-
-    // hash a 0x1000 byte block
-    void HashBlock(BYTE *block, BYTE *outHash);
+    FatxDrive *drive;
+    bool didReadFileListing;
 };
-
-int compareFileEntries(GdfxFileEntry a, GdfxFileEntry b);
-
-#endif // SVOD_H
-
-

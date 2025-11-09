@@ -147,14 +147,16 @@ void XContentHeader::readMetadata()
         thumbnailImageSize = io->ReadDword();
         titleThumbnailImageSize = io->ReadDword();
 
-        thumbnailImage = new BYTE[thumbnailImageSize];
-        titleThumbnailImage = new BYTE[titleThumbnailImageSize];
+        thumbnailImage.resize(thumbnailImageSize);
+        titleThumbnailImage.resize(titleThumbnailImageSize);
 
         // read images
-        io->ReadBytes(thumbnailImage, thumbnailImageSize);
+        if (thumbnailImageSize > 0)
+            io->ReadBytes(thumbnailImage.data(), thumbnailImageSize);
         io->SetPosition(0x571A);
 
-        io->ReadBytes(titleThumbnailImage, titleThumbnailImageSize);
+        if (titleThumbnailImageSize > 0)
+            io->ReadBytes(titleThumbnailImage.data(), titleThumbnailImageSize);
         io->SetPosition(0x971A);
 
         if (((headerSize + 0xFFF) & 0xFFFFF000) - 0x971A < 0x15F4)
@@ -244,18 +246,16 @@ void XContentHeader::FixHeaderHash()
     calculated = (io->GetPosition() < calculated) ? (DWORD)io->GetPosition() : calculated;
     DWORD realHeaderSize = calculated - headerStart;
 
-    BYTE *data = new BYTE[realHeaderSize];
+    std::vector<BYTE> data(realHeaderSize);
 
     // seek to the position
     io->SetPosition(headerStart);
-    io->ReadBytes(data, realHeaderSize);
+    io->ReadBytes(data.data(), realHeaderSize);
 
     // hash the data
     const auto sha1 = Botan::HashFunction::create_or_throw("SHA-1");
-    sha1->update(data, realHeaderSize);
+    sha1->update(data.data(), realHeaderSize);
     sha1->final(headerHash);
-
-    delete[] data;
 
     // Write the new hash to the file
     io->SetPosition(((flags & MetadataIsPEC) ? 0x228 : 0x32C));
@@ -361,9 +361,11 @@ void XContentHeader::WriteMetaData()
         io->Write(thumbnailImageSize);
         io->Write(titleThumbnailImageSize);
 
-        io->Write(thumbnailImage, thumbnailImageSize);
+        if (thumbnailImageSize > 0)
+            io->Write(thumbnailImage.data(), thumbnailImageSize);
         io->SetPosition(0x571A);
-        io->Write(titleThumbnailImage, titleThumbnailImageSize);
+        if (titleThumbnailImageSize > 0)
+            io->Write(titleThumbnailImage.data(), titleThumbnailImageSize);
 
         if (((headerSize + 0xFFF) & 0xFFFFF000) - 0x971A < 0x15F4)
             return;
@@ -534,32 +536,30 @@ void XContentHeader::ResignHeader(BaseIO& kvIo)
         io->Write(certificate.ownerConsoleID, 5);
 
         // read the data to hash
-        BYTE *buffer = new BYTE[realHeaderSize];
-        io->SetPosition(headerStart);
-        io->ReadBytes(buffer, realHeaderSize);
+    std::vector<BYTE> buffer(realHeaderSize);
+    io->SetPosition(headerStart);
+    io->ReadBytes(buffer.data(), realHeaderSize);
 
-        // hash the header
-        const auto sha1 = Botan::HashFunction::create_or_throw("SHA-1");
-        sha1->update(buffer, realHeaderSize);
-        sha1->final(headerHash);
-
-        delete[] buffer;
+    // hash the header
+    const auto sha1 = Botan::HashFunction::create_or_throw("SHA-1");
+    sha1->update(buffer.data(), realHeaderSize);
+    sha1->final(headerHash);
 
         io->SetPosition(hashLoc);
         io->Write(headerHash, 0x14);
 
         io->SetPosition(toSignLoc);
 
-        BYTE *dataToSign = new BYTE[size];
-        io->ReadBytes(dataToSign, size);
+    std::vector<BYTE> dataToSign(size);
+    io->ReadBytes(dataToSign.data(), size);
 
         Botan::PK_Signer signer(pkey, rng, "EMSA3(SHA-1)");
 
-        auto signature = signer.sign_message((unsigned char*)dataToSign, size,
+    auto signature = signer.sign_message(reinterpret_cast<const unsigned char*>(dataToSign.data()), size,
                 rng);
 
-        // 8 byte swap the new signature
-        XeCrypt::BnQw_SwapDwQwLeBe(signature.data(), 0x80);
+    // 8 byte swap the new signature
+    XeCrypt::BnQw_SwapDwQwLeBe(signature.data(), 0x80);
 
         // reverse the new signature every 8 bytes
         for (int i = 0; i < 0x10; i++)
@@ -568,8 +568,6 @@ void XContentHeader::ResignHeader(BaseIO& kvIo)
         // Write the certficate
         memcpy(certificate.signature, signature.data(), 0x80);
         WriteCertificate();
-
-        delete[] dataToSign;
     }
     catch (const std::exception& e)
     {
@@ -578,13 +576,6 @@ void XContentHeader::ResignHeader(BaseIO& kvIo)
     }
 }
 
-XContentHeader::~XContentHeader()
-{
-    if ((flags & MetadataIsPEC) == 0 && (flags & MetadataDontFreeThumbnails) == 0)
-    {
-        delete[] thumbnailImage;
-        delete[] titleThumbnailImage;
-    }
-}
+XContentHeader::~XContentHeader() = default;
 
 

@@ -1,14 +1,14 @@
 #include <XboxInternals/IO/MemoryIO.h>
 
 MemoryIO::MemoryIO(BYTE *data, size_t length) :
-    BaseIO(), memory(data), length(length)
+    BaseIO(), memory(data), length(length), pos(0)
 {
-
+    SetPosition(0);
 }
 
 MemoryIO::~MemoryIO()
 {
-
+    SetPosition(0);
 }
 
 void MemoryIO::SetPosition(UINT64 pos, std::ios_base::seekdir dir)
@@ -31,7 +31,7 @@ void MemoryIO::SetPosition(UINT64 pos, std::ios_base::seekdir dir)
 
     if (newPos > length)
         throw std::string("MemoryIO: Cannot seek beyond the end of the stream\n");
-    this->pos = pos;
+    this->pos = newPos;
 }
 
 UINT64 MemoryIO::GetPosition()
@@ -46,6 +46,8 @@ UINT64 MemoryIO::Length()
 
 void MemoryIO::ReadBytes(BYTE *outBuffer, DWORD len)
 {
+    if (pos + len > length)
+        throw std::string("MemoryIO: Cannot read beyond the end of the stream\n");
     memcpy(outBuffer, memory + pos, len);
     pos += len;
 }

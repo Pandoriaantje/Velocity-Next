@@ -16,4 +16,7 @@ set(VELOCITY_BOTAN_MODULES
     pem
     pk_pad
     emsa_pkcs1 # EMSA-PKCS1-v1_5 padding (aka EMSA3) for RSA signing (used in XContentHeader::ResignHeader)
+    aes         # AES-128 block cipher for XEX decryption
+    modes       # Cipher modes (includes CBC for XEX)
+    block       # Block cipher base class
 )

@@ -2,7 +2,7 @@
 #define GDFX_H
 
 #include <XboxInternals/TypeDefinitions.h>
-#include <XboxInternals/IO/SvodMultiFileIO.h>
+#include <XboxInternals/IO/BaseIO.h>
 #include <iostream>
 #include <vector>
 
@@ -32,6 +32,7 @@ struct GdfxFileEntry
     vector<GdfxFileEntry> files;
     DWORD address;
     DWORD fileIndex;
+    DWORD magic;  // file type identifier (first 4 bytes)
 };
 
 enum GdfxDirentAttributesutes
@@ -45,16 +46,17 @@ enum GdfxDirentAttributesutes
     GdfxNormal = 0x80
 };
 
-// TODO: make this work with the IO interface, and Write header
+// Read the GDFX header, seek io to position of header beforehand
+void GdfxReadHeader(BaseIO *io, GdfxHeader *header);
 
-// read the GDFX header, seek io to position of header beforehand
-void GdfxReadHeader(SvodMultiFileIO *io, GdfxHeader *header);
-
-// read the next file entry in the listing, reeturns false on listing end
-bool GdfxReadFileEntry(SvodMultiFileIO *io, GdfxFileEntry *entry);
+// Read the next file entry in the listing, returns false on listing end
+bool GdfxReadFileEntry(BaseIO *io, GdfxFileEntry *entry);
 
 // Write a file entry back to the listing
-void GdfxWriteFileEntry(SvodMultiFileIO *io, GdfxFileEntry *entry);
+void GdfxWriteFileEntry(BaseIO *io, GdfxFileEntry *entry);
+
+// Order entries so directories come first
+int DirectoryFirstCompareGdfxEntries(const GdfxFileEntry &a, const GdfxFileEntry &b);
 
 #endif // GDFX_H
 

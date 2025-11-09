@@ -1,5 +1,7 @@
 #include <XboxInternals/IO/FatxIO.h>
 
+#include <vector>
+
 FatxIO::FatxIO(DeviceIO *device, FatxFileEntry *entry) : entry(entry), device(device)
 {
     // if it's a new file, then don't do any seeking yet
@@ -85,16 +87,13 @@ int FatxIO::AllocateMemory(DWORD byteAmount)
     // if it's a folder, then we need to 0xFF out all of the clusters allocated so that it doesn't pick up fake entries
     if (entry->fileAttributes & FatxDirectory)
     {
-        BYTE *ffBuff = new BYTE[entry->partition->clusterSize];
-        memset(ffBuff, 0xFF, entry->partition->clusterSize);
+        std::vector<BYTE> ffBuff(entry->partition->clusterSize, 0xFF);
 
         for (size_t i = 0; i < freeClusters.size(); i++)
         {
             device->SetPosition(ClusterToOffset(entry->partition, freeClusters.at(i)));
-            device->WriteBytes(ffBuff, entry->partition->clusterSize);
+            device->WriteBytes(ffBuff.data(), entry->partition->clusterSize);
         }
-
-        delete[] ffBuff;
     }
 
     // add the free clusters to the cluster chain
@@ -405,7 +404,7 @@ void FatxIO::ReplaceFile(std::string sourcePath, void (*progress)(void *, DWORD,
         bufferSize = 0x100000;
 
     std::vector<Range> WriteRanges;
-    BYTE *buffer = new BYTE[bufferSize];
+    std::vector<BYTE> buffer(bufferSize);
     UINT64 pos;
 
     // generate the read ranges
@@ -447,8 +446,8 @@ void FatxIO::ReplaceFile(std::string sourcePath, void (*progress)(void *, DWORD,
         device->SetPosition(WriteRanges.at(i).start);
 
         // get the range from the device
-        inFile.ReadBytes(buffer, WriteRanges.at(i).len);
-        device->WriteBytes(buffer, WriteRanges.at(i).len);
+    inFile.ReadBytes(buffer.data(), WriteRanges.at(i).len);
+    device->WriteBytes(buffer.data(), WriteRanges.at(i).len);
 
         // update progress if needed
         if (progress && i % modulus == 0)
@@ -457,7 +456,6 @@ void FatxIO::ReplaceFile(std::string sourcePath, void (*progress)(void *, DWORD,
 
     // clean up
     inFile.Close();
-    delete[] buffer;
 
     // make sure it hits the end
     if (progress)
@@ -580,7 +578,7 @@ void FatxIO::SaveFile(std::string savePath, void(*progress)(void*, DWORD, DWORD)
         bufferSize = 0x100000;
 
     std::vector<Range> readRanges;
-    BYTE *buffer = new BYTE[bufferSize];
+    std::vector<BYTE> buffer(bufferSize);
 
     // generate the read ranges
     for (DWORD i = 0; i < entry->clusterChain.size() - 1; i++)
@@ -632,8 +630,8 @@ void FatxIO::SaveFile(std::string savePath, void(*progress)(void*, DWORD, DWORD)
         device->SetPosition(readRanges.at(i).start);
 
         // get the range from the device
-        device->ReadBytes(buffer, readRanges.at(i).len);
-        outFile.WriteBytes(buffer, readRanges.at(i).len);
+    device->ReadBytes(buffer.data(), readRanges.at(i).len);
+    outFile.WriteBytes(buffer.data(), readRanges.at(i).len);
 
         // update progress if needed
         if (progress && i % modulus == 0)
@@ -646,8 +644,6 @@ void FatxIO::SaveFile(std::string savePath, void(*progress)(void*, DWORD, DWORD)
 
     outFile.Flush();
     outFile.Close();
-
-    delete[] buffer;
 
     device->SetPosition(originalPos);
 }

@@ -56,6 +56,7 @@
 #include <XboxInternals/Disc/Svod.h>
 #include <XboxInternals/AvatarAsset/Ytgr.h>
 #include <XboxInternals/Disc/Svod.h>
+#include <XboxInternals/Xex/Xuiz.h>
 #include <XboxInternals/IO/DeviceIO.h>
 
 using namespace std;
@@ -139,7 +140,9 @@ private slots:
 
     void on_actionDevice_Viewer_triggered();
 
-    void on_actionISO_GOD_Viewer_triggered();
+    void on_actionISO_triggered();
+
+    void on_actionXUIZ_triggered();
 
     void on_actionThemeAuto_triggered();
 

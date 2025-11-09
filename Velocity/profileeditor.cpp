@@ -166,10 +166,17 @@ ProfileEditor::ProfileEditor(QStatusBar *statusBar, StfsPackage *profile, bool d
         for (DWORD i = 0; i < 109; i++)
             ui->cmbxRegion->addItem(regions[i].name);
 
-        // load the gamerpicture
-        QByteArray imageBuff((char*)profile->metaData->thumbnailImage,
-                (size_t)profile->metaData->thumbnailImageSize);
+    // load the gamerpicture
+    if (!profile->metaData->thumbnailImage.empty())
+    {
+        QByteArray imageBuff(reinterpret_cast<const char*>(profile->metaData->thumbnailImage.data()),
+            static_cast<int>(profile->metaData->thumbnailImage.size()));
         ui->imgGamerpicture->setPixmap(QPixmap::fromImage(QImage::fromData(imageBuff)));
+    }
+    else
+    {
+        ui->imgGamerpicture->setPixmap(QPixmap());
+    }
 
         // extract the dashboard gpd
         dashGpdTempPath = (QDir::tempPath() + "/" + QUuid::createUuid().toString().replace("{",
@@ -581,12 +588,21 @@ void ProfileEditor::onAssetsDoneDownloading()
         buffScaled.open(QIODevice::WriteOnly);
         QPixmap scaled = ui->imgAw->pixmap().scaled(QSize(64, 64));
         scaled.save(&buffScaled, "PNG");
-        newAsset.metaData->thumbnailImage = (BYTE*)baScaled.data();
-        newAsset.metaData->thumbnailImageSize = baScaled.length();
+        const auto *thumbStart = reinterpret_cast<const BYTE*>(baScaled.constData());
+        newAsset.metaData->thumbnailImage.assign(thumbStart, thumbStart + baScaled.size());
+        newAsset.metaData->thumbnailImageSize = static_cast<DWORD>(newAsset.metaData->thumbnailImage.size());
 
         GameGpd *gpd = aaGames.at(ui->aaGamelist->currentIndex().row()).gameGpd;
-        newAsset.metaData->titleThumbnailImage = gpd->thumbnail.image;
-        newAsset.metaData->titleThumbnailImageSize = gpd->thumbnail.length;
+        if (gpd->thumbnail.image != nullptr && gpd->thumbnail.length > 0)
+        {
+            newAsset.metaData->titleThumbnailImage.assign(gpd->thumbnail.image,
+                    gpd->thumbnail.image + gpd->thumbnail.length);
+        }
+        else
+        {
+            newAsset.metaData->titleThumbnailImage.clear();
+        }
+        newAsset.metaData->titleThumbnailImageSize = static_cast<DWORD>(newAsset.metaData->titleThumbnailImage.size());
 
         newAsset.Rehash();
 

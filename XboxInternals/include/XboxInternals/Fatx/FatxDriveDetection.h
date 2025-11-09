@@ -5,10 +5,9 @@
 #include <vector>
 #include <sstream>
 #include <XboxInternals/Fatx/FatxDrive.h>
-
 #include <XboxInternals/Export.h>
 
-class XBOXINTERNALS_EXPORT FatxDriveDetection
+class XBOXINTERNALSSHARED_EXPORT FatxDriveDetection
 {
 public:
     static std::vector<FatxDrive*> GetAllFatxDrives();
@@ -19,5 +18,3 @@ private:
 };
 
 #endif // FATXDRIVEDETECTION_H
-
-

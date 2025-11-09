@@ -2,7 +2,14 @@
 #include "imagedialog.h"
 #include "textdialog.h"
 #include "xmldialog.h"
+#include "packageviewer.h"
+#include "isosectordialog.h"
+#include "xexdialog.h"
+#include "qthelpers.h"
 #include "TextEncoding/EncodingDetector.h"
+#include "XboxInternals/IO/IsoIO.h"
+#include "XboxInternals/Stfs/StfsPackage.h"
+#include "XboxInternals/Stfs/StfsConstants.h"
 #include <QPushButton>
 #include <QTreeWidget>
 #include <QLineEdit>
@@ -14,24 +21,46 @@
 #include <QDropEvent>
 #include <QMimeData>
 #include <QMessageBox>
+#include <QMenu>
 #include <QHeaderView>
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
 #include <QTextStream>
+#include <QStatusBar>
 #include <QPixmap>
 #include <QBuffer>
 #include <QStringDecoder>
 #include <QStringConverter>
 #include <QProgressDialog>
 #include <QTimer>
+#include <QRegularExpression>
+#include <QApplication>
 #include <QtConcurrent/QtConcurrent>
 #include <fstream>
+#include <memory>
 #include "XboxInternals/Iso/IsoImage.h"
-#include "XboxInternals/Iso/XexExecutable.h"
+#include "XboxInternals/Disc/Gdfx.h"
 
-IsoDialog::IsoDialog(QWidget* parent)
-    : QDialog(parent)
+// Helper function to format file sizes
+static QString formatSize(quint64 size) {
+    const quint64 KB = 1024;
+    const quint64 MB = KB * 1024;
+    const quint64 GB = MB * 1024;
+    
+    if (size >= GB) {
+        return QString::number(size / static_cast<double>(GB), 'f', 2) + " GB";
+    } else if (size >= MB) {
+        return QString::number(size / static_cast<double>(MB), 'f', 2) + " MB";
+    } else if (size >= KB) {
+        return QString::number(size / static_cast<double>(KB), 'f', 2) + " KB";
+    } else {
+        return QString::number(size) + " bytes";
+    }
+}
+
+IsoDialog::IsoDialog(QStatusBar* statusBar, QWidget* parent)
+    : QDialog(parent), statusBar_(statusBar)
 {
     setWindowTitle(tr("Xbox 360 ISO Browser"));
     setAcceptDrops(true);
@@ -42,16 +71,19 @@ IsoDialog::IsoDialog(QWidget* parent)
     extractAllButton_ = new QPushButton(tr("Extract All Files"), this);
     expandAllButton_ = new QPushButton(tr("Expand All"), this);
     collapseAllButton_ = new QPushButton(tr("Collapse All"), this);
+    sectorToolButton_ = new QPushButton(tr("Sector Tool"), this);
     
     extractSelectedButton_->setEnabled(false);
     extractAllButton_->setEnabled(false);
     expandAllButton_->setEnabled(false);
     collapseAllButton_->setEnabled(false);
+    sectorToolButton_->setEnabled(false);
 
     auto* buttonLayout = new QHBoxLayout();
     buttonLayout->addWidget(extractSelectedButton_);
     buttonLayout->addWidget(extractAllButton_);
     buttonLayout->addStretch();
+    buttonLayout->addWidget(sectorToolButton_);
     buttonLayout->addWidget(expandAllButton_);
     buttonLayout->addWidget(collapseAllButton_);
 
@@ -66,11 +98,17 @@ IsoDialog::IsoDialog(QWidget* parent)
 
     // Tree widget for ISO contents (collapsible hierarchy)
     tree_ = new QTreeWidget(this);
-    tree_->setHeaderLabels({tr("Name"), tr("Type"), tr("Size")});
+    tree_->setHeaderLabels({tr("Name"), tr("Size"), tr("Sector"), tr("Address")});
     tree_->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tree_->header()->setStretchLastSection(false);
-    tree_->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    tree_->header()->setStretchLastSection(true);  // Last column stretches to fill space
+    tree_->header()->setSectionResizeMode(QHeaderView::Interactive);  // All columns manually resizable
+    tree_->setColumnWidth(0, 300);  // Name column default width
+    tree_->setColumnWidth(1, 100);  // Size column
+    tree_->setColumnWidth(2, 100);  // Sector column
     tree_->setIndentation(20); // Proper indentation for folders
+
+    // Setup context menu like Gualdimar does
+    tree_->setContextMenuPolicy(Qt::CustomContextMenu);
 
     auto* mainLayout = new QVBoxLayout(this);
     mainLayout->addLayout(buttonLayout);
@@ -81,8 +119,10 @@ IsoDialog::IsoDialog(QWidget* parent)
     connect(extractAllButton_, &QPushButton::clicked, this, &IsoDialog::onExtractAll);
     connect(expandAllButton_, &QPushButton::clicked, this, &IsoDialog::onExpandAll);
     connect(collapseAllButton_, &QPushButton::clicked, this, &IsoDialog::onCollapseAll);
+    connect(sectorToolButton_, &QPushButton::clicked, this, &IsoDialog::onSectorToolClicked);
     connect(tree_, &QTreeWidget::itemDoubleClicked, this, &IsoDialog::onItemDoubleClicked);
     connect(searchBox_, &QLineEdit::textChanged, this, &IsoDialog::onSearchTextChanged);
+    connect(tree_, &QTreeWidget::customContextMenuRequested, this, &IsoDialog::showContextMenu);
 }
 
 IsoDialog::~IsoDialog() = default;
@@ -125,9 +165,19 @@ void IsoDialog::loadIsoContents(const QString& path) {
     extractAllButton_->setEnabled(true);
     expandAllButton_->setEnabled(true);
     collapseAllButton_->setEnabled(true);
+    sectorToolButton_->setEnabled(true);
 
     const auto& info = iso_->info();
-    setWindowTitle(tr("Xbox 360 ISO Browser - %1 (%2 bytes)").arg(path).arg(info.imageSize));
+    QString xgdVersion = QString::fromStdString(iso_->GetXGDVersion());
+    QString sizeStr = formatSize(info.imageSize);
+    setWindowTitle(tr("Xbox 360 ISO Browser - %1 (%2) - %3")
+                   .arg(QFileInfo(path).fileName())
+                   .arg(xgdVersion)
+                   .arg(sizeStr));
+    
+    if (statusBar_) {
+        statusBar_->showMessage(tr("ISO parsed successfully"), 5000);
+    }
 }
 
 QTreeWidgetItem* IsoDialog::findOrCreateFolder(const QString& path) {
@@ -170,47 +220,54 @@ QTreeWidgetItem* IsoDialog::findOrCreateFolder(const QString& path) {
     return parent;
 }
 
+
+
 void IsoDialog::populateTree() {
-    auto entries = iso_->listEntries();
+    // Get the GDFX root entries directly (already sorted with directories first)
+    iso_->GetFileListing();
     
-    for (const auto& entry : entries) {
-        // Skip directory entries - they'll be created as containers for files
-        if (entry.type == XboxInternals::Iso::IsoEntryType::Directory) {
-            continue;
-        }
-        
-        QString fullPath = QString::fromStdString(entry.path);
-        QStringList pathParts = fullPath.split('/', Qt::SkipEmptyParts);
-        
-        if (pathParts.isEmpty()) continue;
-        
-        QString fileName = pathParts.last();
-        QString folderPath;
-        
-        if (pathParts.size() > 1) {
-            pathParts.removeLast();
-            folderPath = pathParts.join('/');
-        }
-        
-        // Create folder hierarchy if needed
-        QTreeWidgetItem* parent = findOrCreateFolder(folderPath);
-        
-        // Create file item
-        QTreeWidgetItem* item;
-        if (parent) {
-            item = new QTreeWidgetItem(parent);
-        } else {
-            item = new QTreeWidgetItem(tree_);
-        }
-        
-        item->setText(0, fileName);
-        item->setText(1, tr("File"));
-        item->setText(2, QString::number(entry.size));
-        item->setData(0, Qt::UserRole, fullPath);
-        item->setData(0, Qt::UserRole + 1, false); // Mark as file
+    // Build tree - icons created directly in buildTreeItem like PackageViewer does
+    for (const auto& entry : iso_->root) {
+        buildTreeItem(tree_, nullptr, entry);
     }
+}
+
+void IsoDialog::buildTreeItem(QTreeWidget* tree, QTreeWidgetItem* parent, 
+                              const GdfxFileEntry& entry) {
+    QTreeWidgetItem* item = parent ? new QTreeWidgetItem(parent) : new QTreeWidgetItem(tree);
     
-    tree_->sortItems(0, Qt::AscendingOrder);
+    item->setText(0, QString::fromStdString(entry.name));
+    
+    // Store metadata using custom data roles like Gualdimar does
+    QString fullPath = QString::fromStdString(entry.filePath + entry.name);
+    item->setData(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataPathInISO, fullPath);
+    item->setData(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataMagic, (quint32)entry.magic);
+    
+    bool isDirectory = entry.attributes & GdfxDirectory;
+    item->setData(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemIsDirectory, isDirectory);
+    
+    if (isDirectory) {
+        item->setIcon(0, QIcon(":/Images/FolderFileIcon.png"));
+        item->setText(1, "");
+        item->setText(2, QString("0x%1").arg(entry.sector, 0, 16).toUpper());
+        quint64 address = iso_->SectorToAddress(entry.sector);
+        item->setText(3, QString("0x%1").arg(address, 0, 16).toUpper());
+        
+        // Recursively add children
+        for (const auto& child : entry.files) {
+            buildTreeItem(tree, item, child);
+        }
+    } else {
+        // File icon using QtHelpers pattern
+        QIcon fileIcon;
+        
+        QtHelpers::GetFileIcon(entry.magic, QString::fromStdString(entry.name), fileIcon, *item);
+        item->setIcon(0, fileIcon);
+        item->setText(1, formatSize(entry.size));
+        item->setText(2, QString("0x%1").arg(entry.sector, 0, 16).toUpper());
+        quint64 address = iso_->SectorToAddress(entry.sector);
+        item->setText(3, QString("0x%1").arg(address, 0, 16).toUpper());
+    }
 }
 
 void IsoDialog::onExtractSelected() {
@@ -227,8 +284,8 @@ void IsoDialog::onExtractSelected() {
     auto entries = iso_->listEntries();
     
     for (auto* item : selected) {
-        QString itemPath = item->data(0, Qt::UserRole).toString();
-        bool isFolder = item->data(0, Qt::UserRole + 1).toBool();
+        QString itemPath = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataPathInISO).toString();
+        bool isFolder = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemIsDirectory).toBool();
         
         if (isFolder) {
             // Extract all files within this folder, preserving structure from parent
@@ -282,13 +339,15 @@ void IsoDialog::onExtractAll() {
     const QString outDir = QFileDialog::getExistingDirectory(this, tr("Select Output Directory for Batch Export"));
     if (outDir.isEmpty()) return;
 
-    // Get game name from default.xex if available
-    XboxInternals::Iso::XexExecutable xex;
-    xex.parseFromFilename(currentIsoPath_.toStdString());
-    
-    QString folderName = QString::fromStdString(xex.info().titleId);
-    if (folderName.isEmpty()) {
-        folderName = QFileInfo(currentIsoPath_).baseName();
+    // Derive a default folder name using any Title ID embedded in the ISO filename
+    const QString isoBaseName = QFileInfo(currentIsoPath_).baseName();
+    QString folderName;
+    QRegularExpression titleIdRegex(QStringLiteral("([0-9A-Fa-f]{8})"));
+    const QRegularExpressionMatch titleIdMatch = titleIdRegex.match(isoBaseName);
+    if (titleIdMatch.hasMatch()) {
+        folderName = titleIdMatch.captured(1).toUpper();
+    } else {
+        folderName = isoBaseName;
     }
 
     QString fullOutDir = outDir + "/" + folderName;
@@ -312,14 +371,25 @@ void IsoDialog::onExtractAll() {
     
     // Run extraction in background
     auto future = QtConcurrent::run([this, fullOutDir]() -> ExtractionResult {
-        // Progress callback that emits signal (non-capturing lambda compatible with function pointer)
+        // Progress callback that emits signal
         auto progressCallback = [](void* arg, uint32_t current, uint32_t total) {
             IsoDialog* dialog = static_cast<IsoDialog*>(arg);
             emit dialog->extractionProgressUpdate(static_cast<int>(current), static_cast<int>(total));
         };
         
         bool success = iso_->extractAll(fullOutDir.toStdString(), progressCallback, this);
-        return ExtractionResult{success, 0, "", fullOutDir};
+        
+        // Count actual extracted files by scanning the output directory
+        int fileCount = 0;
+        QDirIterator it(fullOutDir, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            it.next();
+            if (it.fileInfo().isFile()) {
+                fileCount++;
+            }
+        }
+        
+        return ExtractionResult{success, fileCount, "", fullOutDir};
     });
     
     extractionWatcher_->setFuture(future);
@@ -336,20 +406,81 @@ void IsoDialog::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
     Q_UNUSED(column);
     
     // Skip if it's a folder
-    bool isFolder = item->data(0, Qt::UserRole + 1).toBool();
+    bool isFolder = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemIsDirectory).toBool();
     if (isFolder) {
         return;
     }
     
-    QString itemPath = item->data(0, Qt::UserRole).toString();
+    // Get magic number and path from item data
+    DWORD magic = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataMagic).toUInt();
+    QString pathInISO = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataPathInISO).toString();
     
-    auto entries = iso_->listEntries();
-    for (const auto& entry : entries) {
-        if (QString::fromStdString(entry.path) == itemPath && 
-            entry.type == XboxInternals::Iso::IsoEntryType::File) {
-            openFileInViewer(entry);
-            break;
+    // Handle based on magic number like Gualdimar does
+    switch (magic) {
+        case CON:
+        case LIVE:
+        case PIRS: {
+            // Open STFS package in PackageViewer
+            try {
+                IsoIO* io = iso_->GetIO(pathInISO.toStdString());
+                if (!io) {
+                    QMessageBox::warning(this, tr("Error"), tr("Failed to open file in ISO"));
+                    return;
+                }
+                
+                StfsPackage* package = new StfsPackage(io);
+                
+                // Create empty action lists for PackageViewer
+                QList<QAction*> gpdActions;
+                QList<QAction*> gameActions;
+                
+                PackageViewer* viewer = new PackageViewer(statusBar_, package, gpdActions, gameActions, this, true);
+                viewer->setAttribute(Qt::WA_DeleteOnClose);
+                viewer->show();
+            } catch (const std::exception& e) {
+                QMessageBox::warning(this, tr("Error"), 
+                                   tr("Failed to open package: %1").arg(e.what()));
+            }
+            return;
         }
+        
+        case 0x58455832: // XEX2
+        case 0x58455831: // XEX1
+        {
+            try {
+                std::unique_ptr<IsoIO> io(iso_->GetIO(pathInISO.toStdString()));
+                if (!io) {
+                    QMessageBox::warning(this, tr("Error"), tr("Failed to open XEX stream"));
+                    return;
+                }
+
+                Xex *xex = new Xex(io.get());
+                XexDialog *dialog = new XexDialog(xex, this, io.release());
+                dialog->setAttribute(Qt::WA_DeleteOnClose);
+                dialog->show();
+
+                if (statusBar_) {
+                    statusBar_->showMessage(tr("XEX opened successfully"), 5000);
+                }
+            } catch (const std::exception &e) {
+                QMessageBox::warning(this, tr("Error"), tr("Failed to open XEX: %1").arg(e.what()));
+            } catch (const std::string &e) {
+                QMessageBox::warning(this, tr("Error"), tr("Failed to open XEX: %1").arg(QString::fromStdString(e)));
+            }
+            return;
+        }
+        
+        default:
+            // Fall back to the legacy viewer based on file extension
+            auto entries = iso_->listEntries();
+            for (const auto& entry : entries) {
+                if (QString::fromStdString(entry.path) == pathInISO && 
+                    entry.type == XboxInternals::Iso::IsoEntryType::File) {
+                    openFileInViewer(entry);
+                    break;
+                }
+            }
+            break;
     }
 }
 
@@ -533,11 +664,24 @@ void IsoDialog::openFileInViewer(const XboxInternals::Iso::IsoEntry& entry) {
         return;
     }
     
-    // For other files, just show info
+    // For other files, show info including magic number for debugging
+    // Get the stored magic number from the tree item
+    DWORD magic = 0;
+    QTreeWidgetItemIterator it(tree_);
+    while (*it) {
+        QString itemPath = (*it)->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataPathInISO).toString();
+        if (itemPath == QString::fromStdString(entry.path)) {
+            magic = (*it)->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataMagic).toUInt();
+            break;
+        }
+        ++it;
+    }
+    
     QMessageBox::information(this, tr("File Info"), 
-        tr("File: %1\nSize: %2 bytes\n\n(Binary file - no preview available)")
+        tr("File: %1\nSize: %2 bytes\nMagic: 0x%3\n\n(Binary file - no preview available)")
         .arg(QString::fromStdString(entry.name))
-        .arg(entry.size));
+        .arg(entry.size)
+        .arg(magic, 8, 16, QChar('0')).toUpper());
     QFile::remove(tempFile);
 }
 
@@ -560,6 +704,70 @@ void IsoDialog::onSearchTextChanged(const QString& text) {
             }
         }
         ++it;
+    }
+}
+
+void IsoDialog::showContextMenu(const QPoint& point) {
+    // Get the item at the click position
+    QTreeWidgetItem* item = tree_->itemAt(point);
+    if (!item) return;
+    
+    // Create context menu
+    QMenu contextMenu(this);
+    
+    // Only show Extract for single selection and non-directories
+    if (tree_->selectedItems().size() == 1) {
+        bool isDirectory = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemIsDirectory).toBool();
+        if (!isDirectory) {
+            QAction* extractAction = contextMenu.addAction(QIcon(":/Images/extract.png"), tr("Extract"));
+            
+            // Show menu and handle result
+            QPoint globalPos = tree_->mapToGlobal(point);
+            QAction* selectedAction = contextMenu.exec(globalPos);
+            
+            if (selectedAction == extractAction) {
+                // Extract single file
+                QString pathInISO = item->data(0, static_cast<int>(Qt::UserRole) + IsoTreeWidgetItemDataPathInISO).toString();
+                
+                QString defaultName = QFileInfo(pathInISO).fileName();
+                QString savePath = QFileDialog::getSaveFileName(this, tr("Extract File"), defaultName);
+                if (savePath.isEmpty()) return;
+                
+                try {
+                    // Get IO for reading the file
+                    IsoIO* io = iso_->GetIO(pathInISO.toStdString());
+                    if (!io) {
+                        QMessageBox::warning(this, tr("Error"), tr("Failed to open file in ISO"));
+                        return;
+                    }
+                    
+                    // Read the entire file
+                    UINT64 fileSize = io->Length();
+                    std::vector<BYTE> buffer(fileSize);
+                    io->SetPosition(0);
+                    io->ReadBytes(buffer.data(), fileSize);
+                    
+                    // Write to output file
+                    QFile outFile(savePath);
+                    if (!outFile.open(QIODevice::WriteOnly)) {
+                        delete io;
+                        QMessageBox::warning(this, tr("Error"), tr("Failed to create output file"));
+                        return;
+                    }
+                    
+                    outFile.write(reinterpret_cast<const char*>(buffer.data()), fileSize);
+                    outFile.close();
+                    delete io;
+                    
+                    if (statusBar_) {
+                        statusBar_->showMessage(tr("File extracted successfully"), 5000);
+                    }
+                } catch (const std::exception& e) {
+                    QMessageBox::warning(this, tr("Error"), 
+                                       tr("Failed to extract file: %1").arg(e.what()));
+                }
+            }
+        }
     }
 }
 
@@ -586,12 +794,31 @@ void IsoDialog::onExtractionFinished() {
         // Use QTimer::singleShot to show message box after event loop processes deletion
         QTimer::singleShot(100, this, [this, result]() {
             if (result.success) {
-                QMessageBox::information(this, tr("Success"), 
-                    tr("Batch export completed to:\n%1").arg(result.outputPath));
+                QString message = tr("Successfully extracted %n file(s) to:\n%1", "", result.filesExtracted)
+                                  .arg(result.outputPath);
+                QMessageBox::information(this, tr("Extraction Complete"), message);
+                
+                if (statusBar_) {
+                    QString statusMsg = result.filesExtracted == 1 
+                        ? tr("File extracted successfully")
+                        : tr("Files extracted successfully");
+                    statusBar_->showMessage(statusMsg, 5000);
+                }
             } else {
-                QMessageBox::warning(this, tr("Error"), tr("Batch export failed"));
+                QString message = tr("Extraction failed");
+                if (!result.errorMessage.isEmpty()) {
+                    message += tr(":\n%1").arg(result.errorMessage);
+                }
+                QMessageBox::warning(this, tr("Error"), message);
             }
         });
     }
+}
+
+void IsoDialog::onSectorToolClicked() {
+    if (!iso_) return;
+    
+    IsoSectorDialog dialog(iso_.get(), this);
+    dialog.exec();
 }
 

@@ -177,15 +177,17 @@ void CreationWizard::onFinished(int status)
         QBuffer buffer1(&ba1);
         buffer1.open(QIODevice::WriteOnly);
         ui->imgThumbnail->pixmap().save(&buffer1, "PNG");
-        package.metaData->thumbnailImage = (BYTE*)ba1.data();
-        package.metaData->thumbnailImageSize = ba1.length();
+    const auto *thumbStart = reinterpret_cast<const BYTE*>(ba1.constData());
+    package.metaData->thumbnailImage.assign(thumbStart, thumbStart + ba1.size());
+    package.metaData->thumbnailImageSize = static_cast<DWORD>(package.metaData->thumbnailImage.size());
 
         QByteArray ba2;
         QBuffer buffer2(&ba2);
         buffer2.open(QIODevice::WriteOnly);
         ui->imgTitleThumbnail->pixmap().save(&buffer2, "PNG");
-        package.metaData->titleThumbnailImage = (BYTE*)ba2.data();
-        package.metaData->titleThumbnailImageSize = ba2.length();
+    const auto *titleThumbStart = reinterpret_cast<const BYTE*>(ba2.constData());
+    package.metaData->titleThumbnailImage.assign(titleThumbStart, titleThumbStart + ba2.size());
+    package.metaData->titleThumbnailImageSize = static_cast<DWORD>(package.metaData->titleThumbnailImage.size());
 
         package.metaData->WriteMetaData();
 

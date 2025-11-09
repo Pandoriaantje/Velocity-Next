@@ -245,7 +245,7 @@ void MainWindow::on_actionDevice_Viewer_triggered()
     viewer->LoadDrives();
 }
 
-void MainWindow::on_actionISO_GOD_Viewer_triggered()
+void MainWindow::on_actionISO_triggered()
 {
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open Xbox 360 ISO"),
             QtHelpers::DefaultLocation(), 
@@ -254,7 +254,7 @@ void MainWindow::on_actionISO_GOD_Viewer_triggered()
     if (fileName.isEmpty())
         return;
     
-    IsoDialog *dialog = new IsoDialog(this);
+    IsoDialog *dialog = new IsoDialog(ui->statusBar, this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
     QtHelpers::AddSubWindow(ui->mdiArea, dialog);
     dialog->show();
@@ -445,12 +445,11 @@ void MainWindow::LoadFiles(QList<QUrl> &filePaths)
         QString qFileName = QString::fromStdString(fileName);
         if (qFileName.toLower().endsWith(".iso"))
         {
-            IsoDialog *dialog = new IsoDialog(this);
+            IsoDialog *dialog = new IsoDialog(ui->statusBar, this);
             dialog->setAttribute(Qt::WA_DeleteOnClose);
             QtHelpers::AddSubWindow(ui->mdiArea, dialog);
             dialog->show();
             dialog->loadIsoContents(qFileName);
-            ui->statusBar->showMessage("Xbox 360 ISO loaded successfully.", 3000);
             continue;
         }
 
@@ -982,6 +981,43 @@ void MainWindow::on_actionYTGR_triggered()
         ui->statusBar->showMessage("");
         QMessageBox::critical(this, "Ytgr Error",
                 "An error has occurred while parsing a Ytgr header.\n\n" + QString::fromStdString(error));
+    }
+}
+
+void MainWindow::on_actionXUIZ_triggered()
+{
+    QString filePath = QFileDialog::getOpenFileName(this, "Open XUIZ UI Package...",
+            QtHelpers::DefaultLocation(), "All Files (*.*)");
+
+    if (filePath.isEmpty())
+        return;
+
+    try
+    {
+        Xuiz xuiz(filePath.toStdString());
+        std::vector<XuizFileEntry> files = xuiz.GetFiles();
+        
+        QString message = QString("XUIZ Package: %1\n\nContains %2 files:\n\n")
+            .arg(QFileInfo(filePath).fileName())
+            .arg(files.size());
+        
+        for (size_t i = 0; i < files.size() && i < 20; i++)
+        {
+            message += QString("  %1 (%2 bytes)\n")
+                .arg(QString::fromStdString(files[i].path))
+                .arg(files[i].size);
+        }
+        
+        if (files.size() > 20)
+            message += QString("\n  ... and %1 more files").arg(files.size() - 20);
+        
+        QMessageBox::information(this, "XUIZ Package Contents", message);
+    }
+    catch (string error)
+    {
+        ui->statusBar->showMessage("");
+        QMessageBox::critical(this, "XUIZ Error",
+                "An error occurred while opening the XUIZ package.\n\n" + QString::fromStdString(error));
     }
 }
 

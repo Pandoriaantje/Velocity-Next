@@ -1,6 +1,7 @@
 #include <XboxInternals/IO/SvodIO.h>
+#include <XboxInternals/IO/FileIO.h>
 
-SvodIO::SvodIO(XContentHeader *metadata, GdfxFileEntry entry, SvodMultiFileIO *io) :
+SvodIO::SvodIO(XContentHeader *metadata, GdfxFileEntry entry, IndexableMultiFileIO *io) :
     BaseIO(), io(io), metadata(metadata), fileEntry(entry), pos(0)
 {
     offset = ((metadata->svodVolumeDescriptor.flags & EnhancedGDFLayout) ? 0x2000 : 0x1000);
@@ -8,7 +9,7 @@ SvodIO::SvodIO(XContentHeader *metadata, GdfxFileEntry entry, SvodMultiFileIO *i
     // seek to the file's beginning
     DWORD addr, index;
     SectorToAddress(entry.sector, &addr, &index);
-    io->SetPosition(addr, index);
+    io->SetPosition(addr, static_cast<int>(index));
 }
 
 SvodIO::~SvodIO()
@@ -59,7 +60,7 @@ void SvodIO::SetPosition(UINT64 address, ios_base::seekdir dir)
     }
 
     // seek to the position
-    io->SetPosition(addr, index);
+    io->SetPosition(addr, static_cast<int>(index));
     pos = address;
 }
 
@@ -100,7 +101,7 @@ void SvodIO::ReadBytes(BYTE *outBuffer, DWORD len)
         // check to see if we're at the end of a data file
         io->GetPosition(&addr, &index);
         if (addr == 0)
-            io->SetPosition((DWORD)0x2000, index);
+            io->SetPosition((DWORD)0x2000, static_cast<int>(index));
         else
             io->SetPosition((DWORD)addr + 0x1000);
 
@@ -114,7 +115,7 @@ void SvodIO::ReadBytes(BYTE *outBuffer, DWORD len)
         // check to see if we're at the end of a data file
         io->GetPosition(&addr, &index);
         if (addr == 0)
-            io->SetPosition((DWORD)0x2000, index);
+            io->SetPosition((DWORD)0x2000, static_cast<int>(index));
         else
             io->SetPosition((DWORD)(addr + 0x1000));
 
@@ -149,7 +150,7 @@ void SvodIO::WriteBytes(BYTE *buffer, DWORD len)
         // check to see if we're at the end of a data file
         io->GetPosition(&addr, &index);
         if (addr == 0xA290000)
-            io->SetPosition((DWORD)0, index + 1);
+            io->SetPosition((DWORD)0, static_cast<int>(index + 1));
         else
             io->SetPosition(addr + 0x1000);
 
@@ -163,7 +164,7 @@ void SvodIO::WriteBytes(BYTE *buffer, DWORD len)
         // check to see if we're at the end of a data file
         io->GetPosition(&addr, &index);
         if (addr == 0xA290000)
-            io->SetPosition((DWORD)0, index + 1);
+            io->SetPosition((DWORD)0, static_cast<int>(index + 1));
         else
             io->SetPosition((DWORD)(addr + 0x1000));
 

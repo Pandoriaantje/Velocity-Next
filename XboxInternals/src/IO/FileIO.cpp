@@ -1,12 +1,20 @@
 #include <XboxInternals/IO/FileIO.h>
 #include <vector>
 
-FileIO::FileIO(string path, bool truncate) :
+FileIO::FileIO(string path, bool truncate, bool readOnly) :
     BaseIO(), filePath(path)
 {
-    fstr = new fstream(path.c_str(),
-            fstream::in | fstream::out | fstream::binary | (truncate ? fstream::trunc :
-                    static_cast<std::ios_base::openmode>(0)));
+    std::ios_base::openmode mode = fstream::binary;
+    if (readOnly) {
+        mode |= fstream::in;
+    } else {
+        mode |= fstream::in | fstream::out;
+        if (truncate) {
+            mode |= fstream::trunc;
+        }
+    }
+    
+    fstr = new fstream(path.c_str(), mode);
     if (!fstr->is_open())
     {
         std::string ex("FileIO: Error opening the file. ");
@@ -17,7 +25,8 @@ FileIO::FileIO(string path, bool truncate) :
 
     endian = BigEndian;
 
-    fstr->rdbuf()->pubsetbuf(0, 0);
+    // Use default std::fstream buffering for best performance
+    
     fstr->seekp(0, std::ios_base::end);
     length = fstr->tellp();
     fstr->seekp(0);

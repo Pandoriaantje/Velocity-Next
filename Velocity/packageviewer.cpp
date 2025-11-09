@@ -1,5 +1,11 @@
 #include "packageviewer.h"
 #include "ui_packageviewer.h"
+#include "xexdialog.h"
+
+#include <XboxInternals/IO/StfsIO.h>
+
+#include <memory>
+#include <stdexcept>
 
 PackageViewer::PackageViewer(QStatusBar *statusBar, StfsPackage *package,
         QList<QAction *> gpdActions, QList<QAction *> gameActions, QWidget *parent, bool disposePackage) :
@@ -61,10 +67,17 @@ PackageViewer::PackageViewer(QStatusBar *statusBar, StfsPackage *package,
 
         ui->txtDeviceID->setText(builder.toUpper());
 
-        // set the thumbnail
-        QByteArray imageBuff((char*)package->metaData->thumbnailImage,
-                (size_t)package->metaData->thumbnailImageSize);
+    // set the thumbnail
+    if (!package->metaData->thumbnailImage.empty())
+    {
+        QByteArray imageBuff(reinterpret_cast<const char*>(package->metaData->thumbnailImage.data()),
+            static_cast<int>(package->metaData->thumbnailImage.size()));
         ui->imgTile->setPixmap(QPixmap::fromImage(QImage::fromData(imageBuff)));
+    }
+    else
+    {
+        ui->imgTile->setPixmap(QPixmap());
+    }
 
         if (package->metaData->magic != CON)
         {
@@ -804,6 +817,38 @@ void PackageViewer::on_treeWidget_itemDoubleClicked(QTreeWidgetItem *item, int /
 
         // delete the temp file
         remove(tempName.c_str());
+    }
+    else if (item->data(1, Qt::UserRole).toString() == "XEX")
+    {
+        try
+        {
+            QString packagePath;
+            GetPackagePath(item, &packagePath);
+
+            std::unique_ptr<StfsIO> io(package->GetStfsIO(packagePath.toStdString()));
+            if (!io)
+                throw std::runtime_error("Failed to create streaming IO for XEX file.");
+
+            auto *xex = new Xex(io.get());
+            XexDialog *dialog = new XexDialog(xex, this, io.release());
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->show();
+
+            if (statusBar)
+                statusBar->showMessage("XEX opened successfully", 3000);
+        }
+        catch (const std::exception &e)
+        {
+            QMessageBox::critical(this, "Error", QString::fromLatin1("Failed to open XEX file.\n\n%1").arg(e.what()));
+        }
+        catch (const std::string &error)
+        {
+            QMessageBox::critical(this, "Error", "Failed to open XEX file.\n\n" + QString::fromStdString(error));
+        }
+        catch (...)
+        {
+            QMessageBox::critical(this, "Error", "Failed to open XEX file.");
+        }
     }
     else if (item->data(1, Qt::UserRole).toString() == "Image")
     {

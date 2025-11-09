@@ -6,13 +6,14 @@
 
 #include <XboxInternals/Fatx/FatxConstants.h>
 
-#include "../Stfs/XContentHeader.h"
-#include "../IO/DeviceIO.h"
-#include "../IO/FatxIO.h"
+#include <XboxInternals/Stfs/XContentHeader.h>
+#include <XboxInternals/IO/DeviceIO.h>
+#include <XboxInternals/IO/FatxIO.h>
 #include <XboxInternals/IO/MemoryIO.h>
-#include <XboxInternals/IO/MultiFileIO.h>
-#include "../Cryptography/XeKeys.h"
-#include "../Cryptography/XeCrypt.h"
+#include <XboxInternals/IO/JoinedMultiFileIO.h>
+#include <XboxInternals/Cryptography/XeKeys.h>
+#include <XboxInternals/Cryptography/XeCrypt.h>
+#include <XboxInternals/Utils.h>
 
 #include <iostream>
 #include <string>
@@ -21,13 +22,16 @@
 #include <iterator>
 #include <cmath>
 
-class XBOXINTERNALS_EXPORT FatxDrive
+class XBOXINTERNALSSHARED_EXPORT FatxDrive
 {
 public:
     FatxDrive(BaseIO *io, FatxDriveType type);
     FatxDrive(std::string drivePath, FatxDriveType type = FatxHarddrive);
     FatxDrive(std::wstring drivePath, FatxDriveType type = FatxHarddrive);
     ~FatxDrive();
+
+    // compared by their model numbers
+    bool operator==(FatxDrive& other)const;
 
     // get the drives partitions
     std::vector<Partition*> GetPartitions();
@@ -39,8 +43,7 @@ public:
     FatxIO GetFatxIO(FatxFileEntry *entry);
 
     // populate entry's cachedFiles vector (only if it's a directory)
-    void GetChildFileEntries(FatxFileEntry *entry, void(*progress)(void*, bool) = NULL,
-            void *arg = NULL);
+    void GetChildFileEntries(FatxFileEntry *entry, void(*progress)(void*, bool) = NULL, void *arg = NULL);
 
     // populate entry's clusterChain with its cluster chain
     void ReadClusterChain(FatxFileEntry *entry);
@@ -58,17 +61,17 @@ public:
     FatxFileEntry* CreateFolder(FatxFileEntry *parent, std::string folderName);
 
     // creates the specified path (even if multiple folders don't exist in it)
-    FatxFileEntry *CreatePath(std::string folderPath);
+    FatxFileEntry* CreatePath(std::string folderPath);
 
-    // get the first 4 bytes of a file
+    // get the first 4 bytes of a file and the file system which could be STFS or SVOD
+    // both SVOD and STFS packages have the same magic so this is necessary
     void GetFileEntryMagic(FatxFileEntry *entry);
 
     // deletes the entry and all of it's children
     void RemoveFile(FatxFileEntry *entry, void(*progress)(void*) = NULL, void *arg = NULL);
 
     // inject the file
-    void InjectFile(FatxFileEntry *parent, std::string name, std::string filePath,
-            void(*progress)(void*, DWORD, DWORD) = NULL, void *arg = NULL);
+    void InjectFile(FatxFileEntry *parent, std::string name, std::string filePath, void(*progress)(void*, DWORD, DWORD) = NULL, void *arg = NULL);
 
     // determines if a file at the specified path exists
     bool FileExists(std::string filePath);
@@ -86,15 +89,19 @@ public:
     void Close();
 
     // Write the entire contents of the drive to the local disk
-    void CreateBackup(std::string outPath, void(*progress)(void*, DWORD, DWORD) = NULL,
-            void *arg = NULL);
+    void CreateBackup(std::string outPath, void(*progress)(void*, DWORD, DWORD) = NULL, void *arg = NULL);
 
     // re-Write the entire contents of the drive using a backup from the local disk
-    void RestoreFromBackup(std::string backupPath, void(*progress)(void*, DWORD, DWORD) = NULL,
-            void *arg = NULL);
+    void RestoreFromBackup(std::string backupPath, void(*progress)(void*, DWORD, DWORD) = NULL, void *arg = NULL);
 
     // get the amount of free bytes on the device
-    UINT64 GetFreeMemory(Partition *part, void(*progress)(void*, bool) = NULL, void *arg = NULL);
+    UINT64 GetFreeMemory(Partition *part, void(*progress)(void*, bool) = NULL, void *arg = NULL, bool finish = true);
+
+    // get the total amount of bytes that all the partitions occupy
+    UINT64 GetTotalSize();
+
+    // get the total amount of bytes capable of being stored on the device
+    UINT64 GetDeviceSize();
 
     // reload the entire drive, called after restoring
     void ReloadDrive();
@@ -103,7 +110,7 @@ public:
     static INT64 ClusterToOffset(Partition *part, DWORD cluster);
 
     // check to see whether or not a file name is valid
-    static bool ValidFileName(std::string fileName);
+    static bool ValidFileName(std::string fileName);    
 
     // format recovery version, found by Eaton (only on dev kit drives)
     Version lastFormatRecoveryVersion;
@@ -116,13 +123,15 @@ public:
 
 private:
     // Writes the 'newEntry' to disk, in the 'parent' folder
-    FatxFileEntry* createFileEntry(FatxFileEntry *parent, FatxFileEntry *newEntry,
-            bool errorIfAlreadyExists = true);
+    FatxFileEntry* createFileEntry(FatxFileEntry *parent, FatxFileEntry *newEntry, bool errorIfAlreadyExists = true);
 
     // open up a physical drive
     void loadFatxDrive(std::wstring drivePath);
 
-    // open up a physical drive (with BaseIO)
+    // open up a physical drive
+    void loadFatxDrive(void* deviceHandle);
+
+    // open up a physical drive
     void loadFatxDrive();
 
     // process a partition and load it with calulated information
@@ -144,8 +153,7 @@ private:
     std::vector<Partition*> partitions;
     std::vector<FatxFileEntry*> profiles;
     FatxDriveType type;
+    bool onlyVerify;
 };
 
 #endif // FATXDRIVE_H
-
-

@@ -1,4 +1,4 @@
-#include "avatarassetdownloader.h"
+#include "AvatarAssetDownloader.h"
 
 AvatarAssetDownloader::AvatarAssetDownloader(QString titleID, QString guid, QObject *parent) :
     QObject(parent), titleID(titleID), guid(guid), v1TempPath(QString("")), v2TempPath(QString("")),

@@ -21,12 +21,16 @@ add_library(XboxInternals ${_lib_type}
   src/Cryptography/XeCrypt.cpp
   src/Cryptography/XeKeys.cpp
   src/Disc/Gdfx.cpp
+  src/Disc/ISO.cpp
   src/Disc/Svod.cpp
-  src/Disc/IsoImage.cpp
-  src/Disc/GodImage.cpp
-  src/Disc/XexExecutable.cpp
   src/Fatx/FatxDrive.cpp
   src/Fatx/FatxDriveDetection.cpp
+  src/Fatx/FatxHelpers.cpp
+  src/Fatx/XContentDevice.cpp
+  src/Fatx/XContentDeviceItem.cpp
+  src/Fatx/XContentDeviceProfile.cpp
+  src/Fatx/XContentDeviceSharedItem.cpp
+  src/Fatx/XContentDeviceTitle.cpp
   src/Gpd/AvatarAwardGpd.cpp
   src/Gpd/DashboardGpd.cpp
   src/Gpd/GameGpd.cpp
@@ -34,16 +38,30 @@ add_library(XboxInternals ${_lib_type}
   src/Gpd/Xdbf.cpp
   src/Gpd/XdbfHelpers.cpp
   src/IO/BaseIO.cpp
+  src/IO/BigFileIO.cpp
   src/IO/DeviceIO.cpp
+  src/IO/FatxIndexableMultiFileIO.cpp
   src/IO/FatxIO.cpp
   src/IO/FileIO.cpp
+  src/IO/IndexableMultiFileIO.cpp
+  src/IO/IsoIO.cpp
+  src/IO/JoinedMultiFileIO.cpp
+  src/IO/LocalIndexableMultiFileIO.cpp
   src/IO/MemoryIO.cpp
   src/IO/MultiFileIO.cpp
   src/IO/SvodIO.cpp
   src/IO/SvodMultiFileIO.cpp
+  src/IO/XexAesIO.cpp
+  src/IO/XexBaseIO.cpp
+  src/IO/XexZeroBasedCompressionIO.cpp
   src/Stfs/StfsDefinitions.cpp
+  src/IO/StfsIO.cpp
   src/Stfs/StfsPackage.cpp
+  src/Stfs/IXContentHeader.cpp
   src/Stfs/XContentHeader.cpp
+  src/Xex/Xex.cpp
+  src/Xex/Xuiz.cpp
+  src/Utils.cpp
 )
 
 # Include directories with generator expressions for proper package support
@@ -82,6 +100,7 @@ target_link_libraries(XboxInternals
     Qt6::Core          # Used internally, not exposed in API
     Qt6::Xml           # Used internally, not exposed in API
     velocity_compiler_flags  # Inherit common compile options
+    $<$<PLATFORM_ID:Windows>:shlwapi>
 )
 
 # Organize in IDE (Visual Studio solution explorer)

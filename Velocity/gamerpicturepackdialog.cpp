@@ -414,16 +414,18 @@ void GamerPicturePackDialog::on_btnCreatePack_clicked()
         QBuffer buffer1(&ba1);
         buffer1.open(QIODevice::WriteOnly);
         QPixmap(":/Images/20001.png").save(&buffer1, "PNG");
-        picturePack.metaData->thumbnailImage = (BYTE*)ba1.data();
-        picturePack.metaData->thumbnailImageSize = ba1.length();
+    const auto *thumbStart = reinterpret_cast<const BYTE*>(ba1.constData());
+    picturePack.metaData->thumbnailImage.assign(thumbStart, thumbStart + ba1.size());
+    picturePack.metaData->thumbnailImageSize = static_cast<DWORD>(picturePack.metaData->thumbnailImage.size());
 
         // set title thumbnail image
         QByteArray ba2;
         QBuffer buffer2(&ba2);
         buffer2.open(QIODevice::WriteOnly);
         QPixmap(":/Images/defaultTitleImage.png").save(&buffer2, "PNG");
-        picturePack.metaData->titleThumbnailImage = (BYTE*)ba2.data();
-        picturePack.metaData->titleThumbnailImageSize = ba2.length();
+    const auto *titleThumbStart = reinterpret_cast<const BYTE*>(ba2.constData());
+    picturePack.metaData->titleThumbnailImage.assign(titleThumbStart, titleThumbStart + ba2.size());
+    picturePack.metaData->titleThumbnailImageSize = static_cast<DWORD>(picturePack.metaData->titleThumbnailImage.size());
 
         statusBar->showMessage("Creating picture pack, %0 complete");
         ui->tabWidget->setEnabled(false);

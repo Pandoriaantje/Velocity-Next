@@ -41,6 +41,8 @@ class QtHelpers
 public:
     static QString ByteArrayToString(BYTE *buffer, DWORD len, bool spacesBetween);
 
+    static QString ByteArrayToHexQString(BYTE *buffer, DWORD len);
+
     static DWORD ParseHexString(QString string);
 
     static void ParseHexStringBuffer(QString bytes, BYTE *outBuffer, int len);

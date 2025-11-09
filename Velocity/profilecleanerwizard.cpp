@@ -185,16 +185,10 @@ void ProfileCleanerWizard::clean()
     newProfile.metaData->publisherName = profile->metaData->publisherName;
 
     // Handle thumbnail images
-    newProfile.metaData->thumbnailImageSize = profile->metaData->thumbnailImageSize;
-    newProfile.metaData->titleThumbnailImageSize = profile->metaData->titleThumbnailImageSize;
-
-    // Allocate and copy thumbnail images
-    newProfile.metaData->thumbnailImage = new BYTE[profile->metaData->thumbnailImageSize];
-    newProfile.metaData->titleThumbnailImage = new BYTE[profile->metaData->titleThumbnailImageSize];
-
-    // Use std::copy for thumbnail images
-    std::copy(profile->metaData->thumbnailImage, profile->metaData->thumbnailImage + profile->metaData->thumbnailImageSize, newProfile.metaData->thumbnailImage);
-    std::copy(profile->metaData->titleThumbnailImage, profile->metaData->titleThumbnailImage + profile->metaData->titleThumbnailImageSize, newProfile.metaData->titleThumbnailImage);
+    newProfile.metaData->thumbnailImage = profile->metaData->thumbnailImage;
+    newProfile.metaData->thumbnailImageSize = static_cast<DWORD>(newProfile.metaData->thumbnailImage.size());
+    newProfile.metaData->titleThumbnailImage = profile->metaData->titleThumbnailImage;
+    newProfile.metaData->titleThumbnailImageSize = static_cast<DWORD>(newProfile.metaData->titleThumbnailImage.size());
 
     // Use assignment for std::wstring
     newProfile.metaData->titleName = profile->metaData->titleName;

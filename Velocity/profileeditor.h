@@ -29,7 +29,7 @@
 #include <stdio.h>
 #include "gpduploader.h"
 #include "achievementcreationwizard.h"
-#include "avatarassetdownloader.h"
+#include "AvatarAssetDownloader.h"
 
 using namespace std;
 

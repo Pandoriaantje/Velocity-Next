@@ -18,6 +18,14 @@ QString QtHelpers::ByteArrayToString(BYTE *buffer, DWORD len, bool spacesBetween
     }
 }
 
+QString QtHelpers::ByteArrayToHexQString(BYTE *buffer, DWORD len)
+{
+    QString result = "";
+    for (DWORD i = 0; i < len; i++)
+        result += QString("%1").arg((BYTE)buffer[i], 2, 16, QChar('0')).toUpper();
+    return result;
+}
+
 DWORD QtHelpers::ParseHexString(QString string)
 {
     string.replace("0x", "");

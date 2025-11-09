@@ -33,6 +33,9 @@
 int main(int argc, char *argv[]) {
     QApplication a(argc, argv);
     a.addLibraryPath(":/plugins/imageformats");
+    
+    // Initialize Qt resources
+    Q_INIT_RESOURCE(Resources);
 
     // It's good practice to register custom types in main
     qRegisterMetaType<FatxFileEntry*>("FatxFileEntry*");

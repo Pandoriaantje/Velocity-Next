@@ -27,9 +27,16 @@ SvodDialog::SvodDialog(SVOD *svod, QStatusBar *statusBar, QWidget *parent) :
                 svod->metadata->svodVolumeDescriptor.dataBlockOffset * 2, 16).toUpper());
     ui->lblType->setText(QString::fromStdString(ContentTypeToString(svod->metadata->contentType)));
 
-    QByteArray imageBuff((char*)svod->metadata->thumbnailImage,
-            (size_t)svod->metadata->thumbnailImageSize);
-    ui->imgThumbnail->setPixmap(QPixmap::fromImage(QImage::fromData(imageBuff)));
+    if (!svod->metadata->thumbnailImage.empty())
+    {
+        QByteArray imageBuff(reinterpret_cast<const char*>(svod->metadata->thumbnailImage.data()),
+                static_cast<int>(svod->metadata->thumbnailImage.size()));
+        ui->imgThumbnail->setPixmap(QPixmap::fromImage(QImage::fromData(imageBuff)));
+    }
+    else
+    {
+        ui->imgThumbnail->setPixmap(QPixmap());
+    }
 
     statusBar->showMessage("SVOD system parsed successfully", 3000);
 }
