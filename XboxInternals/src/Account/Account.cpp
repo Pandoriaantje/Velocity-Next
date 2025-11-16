@@ -253,9 +253,11 @@ void Account::decryptAccount(std::string encryptedPath, std::string *outPath, Co
     free(outPath_c);
     outPath_c = NULL;
 #else
-    char outPath_c[L_tmpnam];
-    if (!tmpnam(outPath_c))
+    char outPath_c[] = "/tmp/velocity_account_XXXXXX";
+    int fd = mkstemp(outPath_c);
+    if (fd == -1)
         throw string("Account: Failed to generate temporary file name.\n");
+    close(fd);
     *outPath = string(outPath_c);
 #endif
 
@@ -306,9 +308,11 @@ void Account::encryptAccount(std::string decryptedPath, ConsoleType type, std::s
         free(outPath_c);
         outPath_c = NULL;
 #else
-        char outPath_c[L_tmpnam];
-        if (!tmpnam(outPath_c))
+        char outPath_c[] = "/tmp/velocity_account_XXXXXX";
+        int fd = mkstemp(outPath_c);
+        if (fd == -1)
             throw string("Account: Failed to generate temporary file name.\n");
+        close(fd);
         *outPath = string(outPath_c);
 #endif
     }

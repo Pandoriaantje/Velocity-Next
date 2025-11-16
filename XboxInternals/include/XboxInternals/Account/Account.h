@@ -3,6 +3,9 @@
 // other
 #include <iostream>
 #include <stdio.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 #include <XboxInternals/IO/FileIO.h>
 #include <XboxInternals/Account/AccountDefinitions.h>
 #include <XboxInternals/Gpd/XdbfDefinitions.h>
