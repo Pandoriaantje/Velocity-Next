@@ -73,7 +73,7 @@ void IndexableMultiFileIO::ReadBytes(BYTE *outBuffer, DWORD len)
         currentIO->ReadBytes(outBuffer, amountToRead);
 
         if (len >= bytesLeft && (fileIndex + 1) < FileCount()) {
-            SetPosition(0, static_cast<int>(fileIndex + 1));
+            SetPosition(static_cast<DWORD>(0), static_cast<int>(fileIndex + 1));
         } else if (len < bytesLeft) {
             SetPosition(addressInFile + len);
         }
@@ -92,7 +92,7 @@ void IndexableMultiFileIO::WriteBytes(BYTE *buffer, DWORD len)
         currentIO->Write(buffer, amountToWrite);
 
         if (len >= bytesLeft) {
-            SetPosition(0, static_cast<int>(fileIndex + 1));
+            SetPosition(static_cast<DWORD>(0), static_cast<int>(fileIndex + 1));
         } else {
             SetPosition(addressInFile + len);
         }
