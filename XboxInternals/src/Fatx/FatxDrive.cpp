@@ -589,7 +589,7 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
     std::vector<BYTE> buffer(0x100000);
     UINT64 bytesLeft;
 
-#ifdef __WIN32
+#ifdef _WIN32
     std::wstring wBackupPath;
     wBackupPath.assign(backupPath.begin(), backupPath.end());
     HANDLE hFile = CreateFileW(wBackupPath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -612,7 +612,7 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
         throw std::string("FATX: Could not open drive backup.");
 
     lseek(backupFile, 0, SEEK_SET);
-#endif
+#endif // _WIN32
 
     io->SetPosition(0);
 
@@ -620,7 +620,7 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
     DWORD i = 0;
     while (bytesLeft >= 0x100000)
     {
-#ifdef __WIN32
+#ifdef _WIN32
         high = (i * (UINT64)0x100000) >> 32;
         SetFilePointer(hFile, static_cast<LONG>((i * static_cast<UINT64>(0x100000)) & 0xFFFFFFFF), reinterpret_cast<PLONG>(&high), FILE_BEGIN);
 
@@ -640,7 +640,7 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
 
     if (bytesLeft > 0)
     {
-#ifdef __WIN32
+#ifdef _WIN32
         SetFilePointer(hFile, (i * (UINT64)0x100000) & 0xFFFFFFFF, (PLONG)&high, FILE_BEGIN);
         DWORD bytesRead = 0;
         ReadFile(hFile, buffer.data(), static_cast<DWORD>(bytesLeft), &bytesRead, NULL);
@@ -654,7 +654,7 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
     if (progress)
         progress(arg, totalProgress, totalProgress);
 
-#ifdef __WIN32
+#ifdef _WIN32
     CloseHandle(hFile);
 #else
     close(backupFile);

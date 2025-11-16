@@ -236,7 +236,7 @@ void SVOD::Rehash(void (*progress)(DWORD, DWORD, void*), void *arg)
 
         memcpy(master + hashTableCount * 0x14, prevHash, 0x14);
 
-        io->SetPosition(0, static_cast<int>(i));
+        io->SetPosition(static_cast<DWORD>(0), static_cast<int>(i));
         io->WriteBytes(master, 0x1000);
 
         HashBlock(master, prevHash);
@@ -279,7 +279,7 @@ void SVOD::WriteFileEntry(GdfxFileEntry *entry)
 
 DWORD SVOD::GetSectorCount()
 {
-    io->SetPosition(0, static_cast<int>(io->FileCount() - 1));
+    io->SetPosition(static_cast<DWORD>(0), static_cast<int>(io->FileCount() - 1));
     DWORD fileLen = io->CurrentFileLength() - 0x2000;
 
     return (io->FileCount() * 0x14388) + ((fileLen - (0x1000 * (fileLen / 0xCD000))) / 0x800);
