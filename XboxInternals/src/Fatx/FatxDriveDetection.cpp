@@ -67,7 +67,13 @@ std::vector<std::unique_ptr<FatxDrive>> FatxDriveDetection::GetAllFatxDrives()
                 WideCharToMultiByte(CP_UTF8, 0, logicalDrivePath.c_str(), -1, &directory[0], size, nullptr, nullptr);
             }
             #else
-            directory = logicalDrivePath;
+            // Convert wide string to narrow string using wcstombs
+            size_t len = wcstombs(nullptr, logicalDrivePath.c_str(), 0);
+            if (len != static_cast<size_t>(-1))
+            {
+                directory.resize(len);
+                wcstombs(&directory[0], logicalDrivePath.c_str(), len + 1);
+            }
             #endif
 
             #ifdef _WIN32
