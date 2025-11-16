@@ -8,6 +8,8 @@
 #   botan/          - Cryptography library (Git submodule, optional)
 #   out/build/      - Generated build outputs (not in source control)
 #   specs/          - Feature specifications and documentation
+#
+# Botan CMake integration adapted from: https://github.com/Tectu/botan-cmake
 cmake_minimum_required(VERSION 3.20)
 
 # Prevent in-source builds

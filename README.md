@@ -29,41 +29,25 @@ See [BUILD.md](BUILD.md#running-velocity) for Linux/macOS requirements and more 
 
 About Velocity-Next
 -------------------
-Velocity-Next is a cross-platform application built using the Qt framework that allows you to browse and edit Xbox 360 files. Velocity-Next's backend is handled by the XboxInternals library, which currently supports the following Xbox file formats:
+Velocity-Next is a cross-platform Xbox 360 file management application built with Qt 6. Browse, edit, and extract content from Xbox 360 hard drives, USB devices, game saves, profiles, and disc images.
 
-- Xbox-specific cryptography
-- XDBF
-- YTGR
-- FATX
-- STFS
-- Xbox disc formats
-  - SVOD
-  - GDFX
-  - **XISO (Xbox 360 ISO)** ⭐ **NEW**
-    - GDF, XGD3, and Redump format detection
-    - AVL tree directory traversal
-    - File extraction with preserved structure
-    - XEX metadata parsing (Media ID, Title ID, version info)
+### Supported File Formats
 
-### Text Encoding Support ⭐ **NEW**
+- **FATX** - Xbox 360 filesystem (hard drives, USB devices)
+- **STFS** - Game saves, profiles, DLC packages (CON/LIVE/PIRS)
+- **GPD** - Gamer profile data (achievements, avatar awards, settings)
+- **XDBF** - Xbox database files
+- **ISO** - Disc images (GDF, XGD3, Redump formats) with file extraction
+- **XEX** - Xbox executables with metadata parsing
+- **SVOD** - Secure Video on Demand packages
+- **YTGR** - Avatar asset packages
 
-Velocity-Next includes a custom text encoding module for viewing text files from international game ISOs:
+### International Text Support
 
-**Supported Encodings:**
-- **CP932** (Shift-JIS) - Japanese
-- **CP936** (GBK) - Simplified Chinese  
-- **CP950** (Big5) - Traditional Chinese
-- **CP949** (EUC-KR) - Korean
-- UTF-8, UTF-16 LE/BE, Latin-1
-
-**Features:**
-- Automatic encoding detection with scoring-based heuristics
-- Manual encoding override via dropdown menu
-- O(1) hash map lookups for 10,000x performance improvement
-- Real-time re-decoding when switching encodings
-- Character validation API for UI input
-
-Other individual files specific to the Xbox 360 are supported, including the Account file and other minor ones.
+View text files from Japanese, Chinese, and Korean game discs with automatic encoding detection:
+- Japanese (Shift-JIS), Simplified Chinese (GBK), Traditional Chinese (Big5), Korean (EUC-KR)
+- UTF-8, UTF-16, Latin-1
+- Manual encoding override available
 
 Licensing Information
 ---------------------
@@ -79,3 +63,7 @@ Velocity-Next includes and statically links the following third-party libraries:
 
 - **Botan** (BSD-2-Clause): Cryptography library embedded as amalgamation build. See [LICENSE-Botan.txt](LICENSE-Botan.txt) for full license text.
 - **Qt 6**: Cross-platform application framework (LGPL v3 / GPL v3). Qt is dynamically linked (MSVC builds) or statically linked (MinGW builds).
+
+### Build System Acknowledgments
+
+- Botan CMake integration adapted from [Tectu/botan-cmake](https://github.com/Tectu/botan-cmake)

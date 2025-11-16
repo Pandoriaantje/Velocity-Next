@@ -1,5 +1,6 @@
 # Centralized list of Botan modules required by Velocity/XboxInternals.
 # Trim to the minimum; update if code evolves.
+# Botan CMake integration adapted from: https://github.com/Tectu/botan-cmake
 set(VELOCITY_BOTAN_MODULES
     sha1
     hmac
