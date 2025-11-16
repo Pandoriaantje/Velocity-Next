@@ -8,7 +8,6 @@
 #include <iomanip>
 
 #ifndef __WIN32
-    #include <libgen.h>
     #include <sys/stat.h>
 #else
     #include <Shlwapi.h>

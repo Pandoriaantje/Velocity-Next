@@ -20,7 +20,7 @@ set(SOURCES
   about.cpp
   achievementcreationwizard.cpp
   addressconverterdialog.cpp
-  avatarassetdownloader.cpp
+  AvatarAssetDownloader.cpp
   boxartretriever.cpp
   certificatedialog.cpp
   clustertooldialog.cpp
