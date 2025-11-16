@@ -389,6 +389,8 @@ XdbfEntry Xdbf::CreateEntry(EntryType type, UINT64 id, DWORD size)
     // add the entry to the listing, and create a new sync for the entry if needed
     switch (entry.type)
     {
+        case Undefined:
+            throw std::string("Xdbf: Cannot create entry with Undefined type.\n");
         case Achievement:
         {
             // add the entry to the list

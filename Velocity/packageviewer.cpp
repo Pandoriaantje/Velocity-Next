@@ -138,11 +138,11 @@ PackageViewer::~PackageViewer()
     
     for (int i = 0; i < gpdActions.size(); i++)
         if (gpdActions.at(i)->property("package").isValid())
-            gpdActions.at(i)->setProperty("package", QVariant::Invalid);
+            gpdActions.at(i)->setProperty("package", QVariant());
 
     for (int i = 0; i < gameActions.size(); i++)
         if (gameActions.at(i)->property("package").isValid())
-            gameActions.at(i)->setProperty("package", QVariant::Invalid);
+            gameActions.at(i)->setProperty("package", QVariant());
 
     if (disposePackage)
     {

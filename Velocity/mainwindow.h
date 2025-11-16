@@ -87,9 +87,9 @@ public:
     ~MainWindow();
 
 protected:
-    void dragEnterEvent(QDragEnterEvent *event);
-    void dropEvent(QDropEvent *event);
-    void dragLeaveEvent(QDragLeaveEvent *);
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
+    void dragLeaveEvent(QDragLeaveEvent *) override;
     void closeEvent(QCloseEvent *event) override;
 
 private slots:

@@ -628,7 +628,9 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
         ReadFile(hFile, buffer.data(), 0x100000, &bytesRead, NULL);
 #else
         lseek(backupFile, (UINT64)i * (UINT64)0x100000, SEEK_SET);
-        read(backupFile, buffer.data(), 0x100000);
+        ssize_t bytesRead = read(backupFile, buffer.data(), 0x100000);
+        if (bytesRead < 0)
+            throw std::string("FatxDrive: Error reading from backup file.\n");
 #endif
         io->WriteBytes(buffer.data(), 0x100000);
         bytesLeft -= 0x100000;
@@ -646,7 +648,9 @@ void FatxDrive::RestoreFromBackup(std::string backupPath, void (*progress)(void 
         ReadFile(hFile, buffer.data(), static_cast<DWORD>(bytesLeft), &bytesRead, NULL);
 #else
         lseek(backupFile, (UINT64)i * (UINT64)0x100000, SEEK_SET);
-        read(backupFile, buffer.data(), static_cast<size_t>(bytesLeft));
+        ssize_t bytesRead = read(backupFile, buffer.data(), static_cast<size_t>(bytesLeft));
+        if (bytesRead < 0)
+            throw std::string("FatxDrive: Error reading from backup file.\n");
 #endif
         io->WriteBytes(buffer.data(), static_cast<DWORD>(bytesLeft));
     }

@@ -85,7 +85,9 @@ void DeviceIO::ReadBytes(BYTE *outBuffer, DWORD len)
         if (!success)
             throw std::string("DeviceIO: Error reading from device, may be disconnected.\n");
 #else
-        read(impl->device, outBuffer, len);
+        ssize_t bytesRead = read(impl->device, outBuffer, len);
+        if (bytesRead < 0)
+            throw std::string("DeviceIO: Error reading from device.\n");
 #endif
 
         SetPosition(endingPos);
@@ -109,7 +111,9 @@ void DeviceIO::ReadBytes(BYTE *outBuffer, DWORD len)
         if (!success)
             throw std::string("DeviceIO: Error reading from device, may be disconnected.\n");
 #else
-        read(impl->device, lastReadData, FAT_SECTOR_SIZE);
+        ssize_t bytesRead = read(impl->device, lastReadData, FAT_SECTOR_SIZE);
+        if (bytesRead < 0)
+            throw std::string("DeviceIO: Error reading from device.\n");
 #endif
 
         lastReadOffset = pos;
@@ -146,7 +150,9 @@ void DeviceIO::ReadBytes(BYTE *outBuffer, DWORD len)
     if (!success)
         throw std::string("DeviceIO: Error reading from device, may be disconnected.\n");
 #else
-    read(impl->device, outBuffer, downTo);
+    ssize_t bytesRead = read(impl->device, outBuffer, downTo);
+    if (bytesRead < 0)
+        throw std::string("DeviceIO: Error reading from device.\n");
 #endif
 
     // update all our values
@@ -172,7 +178,9 @@ void DeviceIO::ReadBytes(BYTE *outBuffer, DWORD len)
     if (!success)
         throw std::string("DeviceIO: Error reading from device, may be disconnected.\n");
 #else
-    read(impl->device, lastReadData, FAT_SECTOR_SIZE);
+    ssize_t lastBytesRead = read(impl->device, lastReadData, FAT_SECTOR_SIZE);
+    if (lastBytesRead < 0)
+        throw std::string("DeviceIO: Error reading from device.\n");
 #endif
 
     lastReadOffset = pos;
@@ -199,7 +207,9 @@ void DeviceIO::WriteBytes(BYTE *buffer, DWORD len)
         if (!success)
             throw std::string("DeviceIO: Error writing to the device, may be disconnected.\n");
 #else
-        write(impl->device, buffer, len);
+        ssize_t bytesWritten = write(impl->device, buffer, len);
+        if (bytesWritten < 0)
+            throw std::string("DeviceIO: Error writing to device.\n");
 #endif
 
         SetPosition(endingPos);
@@ -239,7 +249,9 @@ void DeviceIO::WriteBytes(BYTE *buffer, DWORD len)
         &bytesWritten,        // Pointer to number of bytes written
         &impl->offset);       // OVERLAPPED structure containing the offset to Write from
 #else
-    write(impl->device, lastReadData, FAT_SECTOR_SIZE);
+    ssize_t bytesWritten = write(impl->device, lastReadData, FAT_SECTOR_SIZE);
+    if (bytesWritten < 0)
+        throw std::string("DeviceIO: Error writing to device.\n");
 #endif
 
     // update the values
@@ -272,7 +284,9 @@ void DeviceIO::WriteBytes(BYTE *buffer, DWORD len)
             &bytesWritten,        // Pointer to number of bytes written
             &impl->offset);       // OVERLAPPED structure containing the offset to Write from
 #else
-        write(impl->device, buffer, FAT_SECTOR_SIZE);
+        ssize_t bytesWritten = write(impl->device, buffer, FAT_SECTOR_SIZE);
+        if (bytesWritten < 0)
+            throw std::string("DeviceIO: Error writing to device.\n");
 #endif
     }
 
