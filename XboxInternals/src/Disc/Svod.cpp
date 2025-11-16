@@ -210,13 +210,13 @@ void SVOD::Rehash(void (*progress)(DWORD, DWORD, void*), void *arg)
 
     for (DWORD i = fileCount; i--;)
     {
-        io->SetPosition(0x2000, static_cast<int>(i));
+        io->SetPosition(static_cast<DWORD>(0x2000), static_cast<int>(i));
         DWORD hashTableCount = ((io->CurrentFileLength() - 0x2000) + 0xCCFFF) / 0xCD000;
         DWORD totalBlockCount = (io->CurrentFileLength() - 0x1000 - (hashTableCount * 0x1000)) >> 0xC;
 
         for (DWORD x = 0; x < hashTableCount; x++)
         {
-            io->SetPosition(0x2000 + x * 0xCD000, static_cast<int>(i));
+            io->SetPosition(static_cast<DWORD>(0x2000 + x * 0xCD000), static_cast<int>(i));
 
             DWORD blockCount = (totalBlockCount >= 0xCC) ? 0xCC : totalBlockCount % 0xCC;
             totalBlockCount -= 0xCC;
@@ -227,7 +227,7 @@ void SVOD::Rehash(void (*progress)(DWORD, DWORD, void*), void *arg)
                 HashBlock(currentBlock, level0 + y * 0x14);
             }
 
-            io->SetPosition(0x1000 + x * 0xCD000, static_cast<int>(i));
+            io->SetPosition(static_cast<DWORD>(0x1000 + x * 0xCD000), static_cast<int>(i));
             io->WriteBytes(level0, 0x1000);
 
             HashBlock(level0, master + x * 0x14);

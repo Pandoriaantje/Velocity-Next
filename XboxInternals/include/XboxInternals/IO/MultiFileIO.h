@@ -15,6 +15,10 @@ public:
     MultiFileIO(std::vector<std::string> filePaths);
     MultiFileIO(std::vector<BaseIO*> files);
     virtual ~MultiFileIO();
+    
+    // Delete copy operations (unique_ptr is not copyable)
+    MultiFileIO(const MultiFileIO&) = delete;
+    MultiFileIO& operator=(const MultiFileIO&) = delete;
 
     // seek to a position in a file
     void SetPosition(UINT64 position, std::ios_base::seekdir dir = std::ios_base::beg);
