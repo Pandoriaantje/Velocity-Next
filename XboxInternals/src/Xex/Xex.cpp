@@ -642,6 +642,14 @@ void Xex::ParseOptionalHeaderEntry(XexOptionalHeaderEntry *entry, int index)
         case ResourceInfo:
             ParseResourceFileTable(headerEntry.data);
             break;
+        case ChecksumInformation:
+        case TLSData:
+        case PageHeapData:
+        case CallcapInformation:
+        case FastcapInformation:
+        case Xbox360Logo:
+            // These optional headers are not currently processed
+            break;
         case BaseFileDescriptor:
             ParseBaseFileDescriptor(headerEntry.data);
             break;
