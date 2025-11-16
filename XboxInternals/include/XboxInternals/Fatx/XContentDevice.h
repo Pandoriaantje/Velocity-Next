@@ -2,6 +2,7 @@
 #define XCONTENTDEVICE_H
 
 #include <iostream>
+#include <memory>
 #include <vector>
 #include <ctype.h>
 #include <iomanip>
@@ -28,17 +29,17 @@ public:
     XContentDevice(FatxDrive *drive);
     ~XContentDevice();
 
-    std::vector<XContentDeviceProfile> *profiles;
+    std::unique_ptr<std::vector<XContentDeviceProfile>> profiles;
 
-    std::vector<XContentDeviceSharedItem> *games;
-    std::vector<XContentDeviceSharedItem> *dlc;
-    std::vector<XContentDeviceSharedItem> *demos;
-    std::vector<XContentDeviceSharedItem> *videos;
-    std::vector<XContentDeviceSharedItem> *themes;
-    std::vector<XContentDeviceSharedItem> *gamerPictures;
-    std::vector<XContentDeviceSharedItem> *avatarItems;
-    std::vector<XContentDeviceSharedItem> *updates;
-    std::vector<XContentDeviceSharedItem> *systemItems;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> games;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> dlc;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> demos;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> videos;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> themes;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> gamerPictures;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> avatarItems;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> updates;
+    std::unique_ptr<std::vector<XContentDeviceSharedItem>> systemItems;
 
     bool LoadDevice(void(*progress)(void*, bool) = NULL, void *arg = NULL);
     FatxDriveType GetDeviceType();

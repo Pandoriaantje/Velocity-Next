@@ -1,22 +1,21 @@
 #include <XboxInternals/AvatarAsset/AvatarAsset.h>
 
 
-AvatarAsset::AvatarAsset(string assetPath) : ioPassedIn(false)
+AvatarAsset::AvatarAsset(string assetPath)
 {
     metadata.gender = (AssetGender)0;
-    customColors.entries = NULL;
     customColors.count = 0;
     animation.frameCount = 0;
 
-    io = new FileIO(assetPath);
+    ioOwned = std::make_unique<FileIO>(assetPath);
+    io = ioOwned.get();
     readHeader();
     readBlocks();
 }
 
-AvatarAsset::AvatarAsset(FileIO *io) : io(io), ioPassedIn(true)
+AvatarAsset::AvatarAsset(FileIO *io) : io(io)
 {
     metadata.gender = (AssetGender)0;
-    customColors.entries = NULL;
     customColors.count = 0;
 
     readHeader();
@@ -70,7 +69,6 @@ void AvatarAsset::readBlocks()
 
         // create a new block
         STRBBlock block;
-        block.data = NULL;
 
         // read the block header
         block.id = (STRRBBlockId)io->ReadMultiByte(header.blockIDSize);
@@ -159,7 +157,7 @@ void AvatarAsset::parseColorTable(DWORD pos)
     customColors.count = io->ReadDword();
 
     // allocate enough memory for all the entries
-    customColors.entries = new ColorTableEntry[customColors.count];
+    customColors.entries.resize(customColors.count);
 
     // read the entries
     for (DWORD i = 0; i < customColors.count; i++)
@@ -190,13 +188,13 @@ void AvatarAsset::parseColorTable(DWORD pos)
 void AvatarAsset::ReadBlockData(STRBBlock *block)
 {
     // allocated enough memory for the data
-    block->data = new BYTE[block->dataLength];
+    block->data.resize(block->dataLength);
 
-    // seek to the positon of the data
+    // seek to the position of the data
     io->SetPosition(block->dataAddress);
 
     // read in the block data
-    io->ReadBytes(block->data, block->dataLength);
+    io->ReadBytes(block->data.data(), block->dataLength);
 }
 
 void AvatarAsset::readAnimationInfo(DWORD pos)
@@ -233,7 +231,7 @@ DWORD AvatarAsset::roundUpToBlockAlignment(DWORD valueToRound)
 
 ColorTable AvatarAsset::GetCustomColorTable()
 {
-    if (customColors.entries == NULL)
+    if (customColors.entries.empty())
         throw string("Asset: No color table found for asset.\n");
 
     return customColors;
@@ -259,20 +257,10 @@ AssetMetadata AvatarAsset::GetAssetMetadata()
 AvatarAsset::~AvatarAsset(void)
 {
     // cleanup the io
-    if (!ioPassedIn)
+    if (ioOwned)
     {
-        io->Close();
-        delete io;
+        ioOwned->Close();
     }
-
-    // cleanup the colors
-    if (customColors.entries != NULL)
-        delete customColors.entries;
-
-    // cleanup the blocks
-    for (DWORD i = 0; i < blocks.size(); i++)
-        if (blocks.at(i).data != NULL)
-            delete blocks.at(i).data;
 }
 
 

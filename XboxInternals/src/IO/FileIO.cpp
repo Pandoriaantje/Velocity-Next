@@ -1,21 +1,13 @@
 #include <XboxInternals/IO/FileIO.h>
 #include <vector>
 
-FileIO::FileIO(string path, bool truncate, bool readOnly) :
+FileIO::FileIO(string path, bool truncate) :
     BaseIO(), filePath(path)
 {
-    std::ios_base::openmode mode = fstream::binary;
-    if (readOnly) {
-        mode |= fstream::in;
-    } else {
-        mode |= fstream::in | fstream::out;
-        if (truncate) {
-            mode |= fstream::trunc;
-        }
-    }
-    
-    fstr = new fstream(path.c_str(), mode);
-    if (!fstr->is_open())
+    fstr = std::make_unique<fstream>(path.c_str(),
+            fstream::in | fstream::out | fstream::binary | (truncate ? fstream::trunc :
+                    static_cast<std::ios_base::openmode>(0)));
+    if (!fstr || !fstr->is_open())
     {
         std::string ex("FileIO: Error opening the file. ");
         ex += strerror(errno);
@@ -49,12 +41,14 @@ UINT64 FileIO::Length()
 
 void FileIO::Close()
 {
-    fstr->close();
+    if (fstr)
+        fstr->close();
 }
 
 void FileIO::Flush()
 {
-    fstr->flush();
+    if (fstr)
+        fstr->flush();
 }
 
 void FileIO::ReverseGenericArray(void *arr, int elemSize, int len)
@@ -93,9 +87,8 @@ void FileIO::WriteBytes(BYTE *buffer, DWORD len)
 
 FileIO::~FileIO(void)
 {
-    if(fstr->is_open())
+    if (fstr && fstr->is_open())
         fstr->close();
-    delete fstr;
 }
 
 

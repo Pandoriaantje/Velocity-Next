@@ -1,10 +1,12 @@
 #ifndef MULTIFILEIO_H
 #define MULTIFILEIO_H
 
-#include <XboxInternals/IO/FileIO.h>
 #include <iostream>
+#include <memory>
 #include <vector>
+
 #include <XboxInternals/IO/BaseIO.h>
+#include <XboxInternals/IO/FileIO.h>
 #include <XboxInternals/Export.h>
 
 using std::string;
@@ -49,7 +51,7 @@ private:
     DWORD addressInFile;
     DWORD fileIndex;
 
-    FileIO *currentIO;
+    std::unique_ptr<FileIO> currentIO;
     vector<string> files;
 
     // get all the file names in the directory

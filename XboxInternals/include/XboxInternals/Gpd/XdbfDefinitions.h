@@ -90,28 +90,15 @@ enum SettingEntryType
 
 struct SettingEntry
 {
-    SettingEntryType type;
-    XdbfEntry entry;
-    union
-    {
-        unsigned int int32;
-        INT64 int64;
-        double doubleData;
-        wstring *str;
-        float floatData;
-        struct
-        {
-            BYTE *data;
-            DWORD length;
-        } binaryData;
-        time_t timeStamp;
-    };
-
-public:
-    SettingEntry()
-    {
-        type = (SettingEntryType)0;
-    }
+    SettingEntryType type = Context;
+    XdbfEntry entry{};
+    unsigned int int32 = 0;
+    INT64 int64 = 0;
+    double doubleData = 0.0;
+    float floatData = 0.0f;
+    vector<BYTE> binaryData;
+    wstring str;
+    time_t timeStamp = 0;
 };
 
 struct StringEntry
@@ -124,18 +111,11 @@ struct StringEntry
 
 struct ImageEntry
 {
-    BYTE *image;
-    DWORD length;
+    vector<BYTE> image;
+    DWORD length = 0;
 
-    XdbfEntry entry;
-    DWORD initialLength;
-
-    ImageEntry()
-    {
-        image = NULL;
-        length = 0;
-        initialLength = 0;
-    }
+    XdbfEntry entry{};
+    DWORD initialLength = 0;
 };
 
 enum AchievementFlags

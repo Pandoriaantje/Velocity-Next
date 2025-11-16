@@ -771,17 +771,17 @@ void PackageViewer::on_treeWidget_itemDoubleClicked(QTreeWidgetItem *item, int /
             package->ExtractFile(packagePath.toStdString(), tempNameStd);
 
             // parse the gpd
-            GpdBase *gpd = new GpdBase(tempNameStd);
+            auto gpd = std::make_unique<GpdBase>(tempNameStd);
             statusBar->showMessage("Gpd parsed successfully", 3000);
 
-            bool changed;
-            XdbfDialog dialog(statusBar, gpd, &changed, this);
-            dialog.exec();
+            bool changed = false;
+            {
+                XdbfDialog dialog(statusBar, std::move(gpd), &changed, this);
+                dialog.exec();
+            }
 
-            if(changed)
+            if (changed)
                 package->ReplaceFile(tempNameStd, packagePath.toStdString());
-
-            gpd->Close();
 
             // delete the temp file
             QFile::remove(tempName);

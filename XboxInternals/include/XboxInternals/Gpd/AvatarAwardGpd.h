@@ -16,7 +16,7 @@ class XBOXINTERNALS_EXPORT AvatarAwardGpd : public GpdBase
 public:
     AvatarAwardGpd(string gpdPath);
     AvatarAwardGpd(FileIO *io);
-    ~AvatarAwardGpd(void);
+        ~AvatarAwardGpd(void) override = default;
 
     vector<AvatarAwardData> avatarAwards;
 

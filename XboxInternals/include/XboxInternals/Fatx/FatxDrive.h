@@ -21,10 +21,12 @@
 #include <algorithm>
 #include <iterator>
 #include <cmath>
+#include <memory>
 
 class XBOXINTERNALSSHARED_EXPORT FatxDrive
 {
 public:
+    FatxDrive(std::unique_ptr<BaseIO> io, FatxDriveType type);
     FatxDrive(BaseIO *io, FatxDriveType type);
     FatxDrive(std::string drivePath, FatxDriveType type = FatxHarddrive);
     FatxDrive(std::wstring drivePath, FatxDriveType type = FatxHarddrive);
@@ -149,8 +151,8 @@ private:
     // check to see if a certain character is allowed as a file name
     static bool validFileChar(char c);
 
-    BaseIO *io;
-    std::vector<Partition*> partitions;
+    std::unique_ptr<BaseIO> io;
+    std::vector<std::unique_ptr<Partition>> partitions;
     std::vector<FatxFileEntry*> profiles;
     FatxDriveType type;
     bool onlyVerify;

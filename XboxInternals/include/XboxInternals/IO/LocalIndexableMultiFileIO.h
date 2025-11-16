@@ -13,5 +13,5 @@ public:
 
 protected:
     void loadDirectories(std::string path) override;
-    BaseIO* openFile(std::string path) override;
+    std::unique_ptr<BaseIO> openFile(std::string path) override;
 };

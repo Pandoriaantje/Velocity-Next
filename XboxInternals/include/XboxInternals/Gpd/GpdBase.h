@@ -3,21 +3,25 @@
 #include <iostream>
 #include <XboxInternals/Gpd/Xdbf.h>
 #include <XboxInternals/Gpd/XdbfDefinitions.h>
+#include <memory>
 #include <vector>
 
 #include <XboxInternals/Export.h>
 
+using std::shared_ptr;
 using std::string;
+using std::unique_ptr;
 using std::vector;
 
 class XBOXINTERNALS_EXPORT GpdBase
 {
 public:
-    GpdBase(FileIO *io);
-    GpdBase(string gpdPath);
+    explicit GpdBase(shared_ptr<FileIO> io);
+    explicit GpdBase(FileIO *io) : GpdBase(shared_ptr<FileIO>(io)) {}
+    explicit GpdBase(string gpdPath);
 
-    ~GpdBase(void);
-    Xdbf *xdbf;
+    virtual ~GpdBase() = default;
+    unique_ptr<Xdbf> xdbf;
 
     vector<ImageEntry> images;
     vector<StringEntry> strings;
@@ -51,8 +55,7 @@ public:
     SettingEntry GetSetting(UINT64 id);
 
 protected:
-    bool ioPassedIn;
-    FileIO *io;
+    shared_ptr<FileIO> io;
 
 private:
     // Description: read the string entry passed in

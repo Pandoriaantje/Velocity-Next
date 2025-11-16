@@ -12,6 +12,8 @@
 #include <QStatusBar>
 #include "qthelpers.h"
 
+#include <memory>
+
 // xbox360
 #include <XboxInternals/Gpd/Xdbf.h>
 #include <XboxInternals/Gpd/XdbfDefinitions.h>
@@ -39,7 +41,7 @@ class XdbfDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit XdbfDialog(QStatusBar *statusBar, GpdBase *gpd, bool *modified = nullptr,
+    explicit XdbfDialog(QStatusBar *statusBar, std::unique_ptr<GpdBase> gpd, bool *modified = nullptr,
             QWidget *parent = 0);
     ~XdbfDialog();
 
@@ -50,7 +52,7 @@ private slots:
 
 private:
     Ui::XdbfDialog *ui;
-    GpdBase *gpd;
+    std::unique_ptr<GpdBase> gpd;
     bool *modified;
     QStatusBar *statusBar;
 

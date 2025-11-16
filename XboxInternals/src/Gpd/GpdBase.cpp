@@ -1,19 +1,15 @@
 #include <XboxInternals/Gpd/GpdBase.h>
+#include <utility>
 
 
-GpdBase::GpdBase(string path) : ioPassedIn(false)
+GpdBase::GpdBase(shared_ptr<FileIO> io) : io(std::move(io))
 {
-    io = new FileIO(path);
-    xdbf = new Xdbf(io);
-
+    xdbf = std::make_unique<Xdbf>(this->io);
     init();
 }
 
-GpdBase::GpdBase(FileIO *io) : ioPassedIn(true), io(io)
+GpdBase::GpdBase(string path) : GpdBase(std::make_shared<FileIO>(path))
 {
-    xdbf = new Xdbf(io);
-
-    init();
 }
 
 void GpdBase::init()
@@ -24,12 +20,18 @@ void GpdBase::init()
         // set up the information
         ImageEntry image;
         image.entry = xdbf->images.at(i);
-        image.initialLength = image.length = image.entry.length;
-        image.image = new BYTE[image.length];
+        image.initialLength = image.entry.length;
+        image.length = image.entry.length;
+        image.image.resize(image.length);
 
         // read in the image
-        io->SetPosition(xdbf->GetRealAddress(image.entry.addressSpecifier));
-        io->ReadBytes(image.image, image.length);
+        if (image.length > 0)
+        {
+            io->SetPosition(xdbf->GetRealAddress(image.entry.addressSpecifier));
+            io->ReadBytes(image.image.data(), image.length);
+        }
+
+        image.length = static_cast<DWORD>(image.image.size());
 
         // add the image to the vector
         images.push_back(image);
@@ -92,10 +94,8 @@ SettingEntry GpdBase::readSettingEntry(XdbfEntry entry)
         case Context:
             io->SetPosition(entryAddr);
 
-            toReturn.binaryData.data = new BYTE[entry.length];
-            toReturn.binaryData.length = entry.length;
-
-            io->ReadBytes(toReturn.binaryData.data, entry.length);
+            toReturn.binaryData.resize(entry.length);
+            io->ReadBytes(toReturn.binaryData.data(), entry.length);
             break;
         case Int32:
             toReturn.int32 = io->ReadInt32();
@@ -112,7 +112,7 @@ SettingEntry GpdBase::readSettingEntry(XdbfEntry entry)
         {
             DWORD strLen = io->ReadDword();
             io->SetPosition(entryAddr + 0x18);
-            toReturn.str = new wstring(io->ReadWString(strLen));
+            toReturn.str = io->ReadWString(strLen);
             break;
         }
         case Float:
@@ -121,10 +121,10 @@ SettingEntry GpdBase::readSettingEntry(XdbfEntry entry)
             break;
         }
         case Binary:
-            toReturn.binaryData.length = io->ReadDword();
+            toReturn.binaryData.resize(io->ReadDword());
             io->SetPosition(entryAddr + 0x18);
-            toReturn.binaryData.data = new BYTE[toReturn.binaryData.length];
-            io->ReadBytes(toReturn.binaryData.data, toReturn.binaryData.length);
+            if (!toReturn.binaryData.empty())
+                io->ReadBytes(toReturn.binaryData.data(), static_cast<DWORD>(toReturn.binaryData.size()));
             break;
         case TimeStamp:
         {
@@ -181,7 +181,7 @@ void GpdBase::CreateSettingEntry(SettingEntry *setting, UINT64 entryID)
     switch (setting->type)
     {
         case Context:
-            entryLen = setting->binaryData.length;
+            entryLen = static_cast<DWORD>(setting->binaryData.size());
             break;
         case Int32:
         case Float:
@@ -191,10 +191,10 @@ void GpdBase::CreateSettingEntry(SettingEntry *setting, UINT64 entryID)
             entryLen = 0x18;
             break;
         case UnicodeString:
-            entryLen = 0x18 + ((setting->str->size() + 1) * 2);
+            entryLen = 0x18 + ((setting->str.size() + 1) * 2);
             break;
         case Binary:
-            entryLen = 0x18 + (setting->binaryData.length * 2);
+            entryLen = 0x18 + (static_cast<DWORD>(setting->binaryData.size()) * 2);
             break;
         default:
             throw string("Gpd: Error creating setting entry. Invalid setting entry type.\n");
@@ -212,6 +212,7 @@ void GpdBase::CreateSettingEntry(SettingEntry *setting, UINT64 entryID)
 
 void GpdBase::CreateImageEntry(ImageEntry *image, UINT64 entryID)
 {
+    image->length = static_cast<DWORD>(image->image.size());
     // create Xdbf entry
     image->initialLength = image->length;
     image->entry = xdbf->CreateEntry(Image, entryID, image->length);
@@ -242,16 +243,18 @@ void GpdBase::WriteSettingEntry(SettingEntry setting)
     {
         case Context:
         {
-            if (setting.entry.length != setting.binaryData.length)
+            const DWORD binaryLength = static_cast<DWORD>(setting.binaryData.size());
+            if (setting.entry.length != binaryLength)
             {
                 // adjust the memory if the length changed
                 xdbf->DeallocateMemory(xdbf->GetRealAddress(setting.entry.addressSpecifier), setting.entry.length);
-                setting.entry.length = setting.binaryData.length;
+                setting.entry.length = binaryLength;
                 entryAddr = xdbf->AllocateMemory(setting.entry.length);
                 setting.entry.addressSpecifier = xdbf->GetSpecifier(entryAddr);
             }
             io->SetPosition(entryAddr);
-            io->Write(setting.binaryData.data, setting.binaryData.length);
+            if (!setting.binaryData.empty())
+                io->Write(setting.binaryData.data(), binaryLength);
             break;
         }
         case Int32:
@@ -271,7 +274,7 @@ void GpdBase::WriteSettingEntry(SettingEntry setting)
         }
         case UnicodeString:
         {
-            DWORD calculatedLength = 0x18 + ((setting.str->size() + 1) * 2);
+            DWORD calculatedLength = 0x18 + ((setting.str.size() + 1) * 2);
             if (setting.entry.length != calculatedLength)
             {
                 // adjust the memory if the length changed
@@ -286,13 +289,15 @@ void GpdBase::WriteSettingEntry(SettingEntry setting)
                 io->Write((BYTE)setting.type);
                 io->SetPosition(entryAddr + 0x10);
             }
-            io->Write((DWORD)((setting.str->size() + 1) * 2));
+            io->Write(static_cast<DWORD>((setting.str.size() + 1) * 2));
             io->Write((DWORD)0);
-            io->Write(*setting.str);
+            io->Write(setting.str);
             break;
         }
         case Binary:
-            DWORD calculatedLength = 0x18 + setting.binaryData.length;
+        {
+            const DWORD dataLength = static_cast<DWORD>(setting.binaryData.size());
+            DWORD calculatedLength = 0x18 + dataLength;
             if (setting.entry.length != calculatedLength)
             {
                 // adjust the memory if the length changed
@@ -307,10 +312,12 @@ void GpdBase::WriteSettingEntry(SettingEntry setting)
                 io->Write((BYTE)setting.type);
                 io->SetPosition(entryAddr + 0x10);
             }
-            io->Write(setting.binaryData.length);
+            io->Write(dataLength);
             io->Write((DWORD)0);
-            io->Write(setting.binaryData.data, setting.binaryData.length);
+            if (!setting.binaryData.empty())
+                io->Write(setting.binaryData.data(), dataLength);
             break;
+        }
     }
 
     if (setting.entry.id != GamercardTitleAchievementsEarned &&
@@ -323,17 +330,21 @@ void GpdBase::WriteSettingEntry(SettingEntry setting)
 
 void GpdBase::WriteImageEntry(ImageEntry image)
 {
+    const DWORD dataLength = static_cast<DWORD>(image.image.size());
+
     // allocate memory if needed
-    if (image.length != image.initialLength)
+    if (image.length != image.initialLength || image.length != dataLength)
     {
         xdbf->DeallocateMemory(xdbf->GetRealAddress(image.entry.addressSpecifier), image.entry.length);
-        image.entry.length = image.length;
+        image.entry.length = dataLength;
         image.entry.addressSpecifier = xdbf->GetSpecifier(xdbf->AllocateMemory(image.entry.length));
+        image.length = dataLength;
     }
 
     // Write the image
     io->SetPosition(xdbf->GetRealAddress(image.entry.addressSpecifier));
-    io->Write(image.image, image.length);
+    if (!image.image.empty())
+        io->Write(image.image.data(), dataLength);
 }
 
 void GpdBase::Close()
@@ -354,25 +365,6 @@ SettingEntry GpdBase::GetSetting(UINT64 id)
         if (settings.at(i).entry.id == id)
             return settings.at(i);
     return SettingEntry();
-}
-
-GpdBase::~GpdBase(void)
-{
-    // deallocate all of the image memory
-    for (DWORD i = 0; i < images.size(); i++)
-        delete[] images.at(i).image;
-
-    // deallocate all of the setting memory
-    for (DWORD i = 0; i < settings.size(); i++)
-    {
-        if (settings.at(i).type == Binary || settings.at(i).type == Context)
-            delete[] settings.at(i).binaryData.data;
-        else if (settings.at(i).type == UnicodeString)
-            delete settings.at(i).str;
-    }
-
-    delete io;
-    delete xdbf;
 }
 
 

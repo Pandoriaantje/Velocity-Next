@@ -2,6 +2,7 @@
 #define XCONTENTDEVICEPROFILE_H
 
 #include <iostream>
+#include <memory>
 #include <vector>
 
 #include <XboxInternals/Stfs/StfsPackage.h>
@@ -15,8 +16,8 @@ class XBOXINTERNALSSHARED_EXPORT XContentDeviceProfile : public XContentDeviceIt
 {
 public:
     XContentDeviceProfile();
-    XContentDeviceProfile(FatxFileEntry *fileEntry, IXContentHeader *profile);
-    XContentDeviceProfile(std::string pathOnDevice, std::string rawName, IXContentHeader *profile, DWORD fileSize = 0);
+    XContentDeviceProfile(FatxFileEntry *fileEntry, std::shared_ptr<IXContentHeader> profile);
+    XContentDeviceProfile(std::string pathOnDevice, std::string rawName, std::shared_ptr<IXContentHeader> profile, DWORD fileSize = 0);
 
     std::vector<XContentDeviceTitle> titles;
 

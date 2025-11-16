@@ -3,6 +3,10 @@
 #include <XboxInternals/IO/StfsIO.h>
 
 #include <stdio.h>
+#include <memory>
+#include <iostream>
+#include <iomanip>
+#include <unordered_set>
 
 namespace
 {
@@ -10,8 +14,14 @@ constexpr DWORD dataBlocksPerHashTreeLevel[3] = {1, 0xAA, 0x70E4};
 }
 
 StfsPackage::StfsPackage(BaseIO* io, DWORD flags) :
-    io(io), ioPassedIn(true), flags(flags)
+    io(io), flags(flags)
 {
+    if ((flags & StfsPackageDeleteIO) && io != nullptr)
+    {
+        ownedIO.reset(io);
+        this->io = ownedIO.get();
+    }
+
     try
     {
         Init();
@@ -24,9 +34,10 @@ StfsPackage::StfsPackage(BaseIO* io, DWORD flags) :
 }
 
 StfsPackage::StfsPackage(string packagePath, DWORD flags) :
-    ioPassedIn(false), flags(flags)
+    io(nullptr), flags(flags)
 {
-    io = new FileIO(packagePath, (bool)(flags & StfsPackageCreate));
+    ownedIO = std::make_unique<FileIO>(packagePath, (bool)(flags & StfsPackageCreate));
+    io = ownedIO.get();
     try
     {
         Init();
@@ -63,16 +74,18 @@ void StfsPackage::Cleanup()
     if (io)
     {
         io->Close();
-
-        if (!ioPassedIn || (flags & StfsPackageDeleteIO))
-            delete io;
-
-        io = nullptr;
     }
+
+    if (ownedIO)
+    {
+        ownedIO.reset();
+    }
+
+    io = nullptr;
 
     if (metaData)
     {
-        delete metaData;
+        metaDataOwner.reset();
         metaData = nullptr;
     }
 }
@@ -80,10 +93,12 @@ void StfsPackage::Cleanup()
 void StfsPackage::Parse()
 {
     if (flags & StfsPackageCreate)
-        metaData = new XContentHeader(io,
+        metaDataOwner = std::make_unique<XContentHeader>(io,
             (flags & StfsPackagePEC) | MetadataSkipRead | MetadataDontFreeThumbnails);
     else
-        metaData = new XContentHeader(io, (flags & StfsPackagePEC));
+        metaDataOwner = std::make_unique<XContentHeader>(io, (flags & StfsPackagePEC));
+
+    metaData = metaDataOwner.get();
 
     // Initialize metadata with default values for new packages
     if (flags & StfsPackageCreate)
@@ -461,11 +476,24 @@ void StfsPackage::ExtractFile(string pathInPackage, string outPath, void (*extra
 void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extractProgress)(void*,
     DWORD, DWORD), void* arg)
 {
+    if (!entry)
+        throw std::string("STFS: NULL file entry pointer");
+    
     if (entry->nameLen == 0)
     {
         except.str(std::string());
         except << "STFS: File '" << entry->name.c_str() << "' doesn't exist in the package.\n";
         throw except.str();
+    }
+
+    // Verify starting block is valid before proceeding
+    try
+    {
+        GetBlockHashEntry(entry->startingBlockNum);
+    }
+    catch (...)
+    {
+        throw;
     }
 
     // create/truncate our out file
@@ -486,11 +514,45 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
         return;
     }
 
-    // Optimize extraction for consecutive blocks
-    if (entry->flags & 1)
+    // Optimize extraction for consecutive blocks when the chain is verified
+    bool useOptimizedPath = (entry->flags & ConsecutiveBlocks) != 0;
+    if (useOptimizedPath)
     {
-    // Allocate buffer for 0xAA blocks (optimal read size)
-    std::vector<BYTE> buffer(0xAA000);
+        bool contiguous = true;
+        try
+        {
+            // Force-refresh to ensure we have an up-to-date chain before validating contiguity
+            GenerateBlockChain(entry, true);
+
+            if (entry->blockChain.size() != static_cast<size_t>(entry->blocksForFile))
+                contiguous = false;
+            else
+            {
+                for (size_t idx = 1; idx < entry->blockChain.size(); ++idx)
+                {
+                    const auto prev = static_cast<int>(entry->blockChain[idx - 1]);
+                    const auto current = static_cast<int>(entry->blockChain[idx]);
+                    if (current != prev + 1)
+                    {
+                        contiguous = false;
+                        break;
+                    }
+                }
+            }
+        }
+        catch (...)
+        {
+            contiguous = false;
+        }
+
+        if (!contiguous)
+            useOptimizedPath = false;
+    }
+
+    if (useOptimizedPath)
+    {
+        // Allocate buffer for 0xAA blocks (optimal read size)
+        std::vector<BYTE> buffer(0xAA000);
 
         // seek to the beginning of the file
         DWORD startAddress = BlockToAddress(entry->startingBlockNum);
@@ -511,7 +573,6 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
                 extractProgress(arg, entry->blocksForFile, entry->blocksForFile);
 
             outFile.Close();
-
             return;
         }
         else
@@ -553,7 +614,7 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
             DWORD currentPos = io->GetPosition();
             io->SetPosition(currentPos + GetHashTableSkipSize(currentPos));
 
-            // read in the extra crap
+            // Read trailing data after hash tables
             io->ReadBytes(buffer.data(), tempSize);
 
             // Write it to the out file
@@ -577,8 +638,19 @@ void StfsPackage::ExtractFile(StfsFileEntry* entry, string outPath, void (*extra
         BYTE data[0x1000];
 
         // read all the full blocks the file allocates
+        std::unordered_set<DWORD> visitedBlocks;
         for (DWORD i = 0; i < fullReadCounts; i++)
         {
+            // Detect cycles
+            if (!visitedBlocks.insert(block).second)
+            {
+                outFile.Close();
+                except.str(std::string());
+                except << "STFS: Block chain cycle detected at block " << block
+                       << " while extracting '" << entry->name << "'";
+                throw except.str();
+            }
+
             ExtractBlock(block, data);
             outFile.Write(data, 0x1000);
 
@@ -631,6 +703,7 @@ StfsFileEntry StfsPackage::GetFileEntry(string pathInPackage, bool checkFolders,
     StfsFileEntry* newEntry)
 {
     StfsFileEntry entry;
+    
     GetFileEntry(SplitString(pathInPackage, "\\"), &fileListing, &entry, newEntry, (newEntry != NULL),
         checkFolders);
 
@@ -787,8 +860,9 @@ HashTable StfsPackage::GetLevelNHashTable(DWORD index, Level lvl)
     toReturn.level = lvl;
 
     // compute base address of the hash table
-    toReturn.trueBlockNumber = ComputeLevelNBackingHashBlockNumber(index *
-        dataBlocksPerHashTreeLevel[lvl], lvl);
+    // Use explicit multipliers: Level0 covers 0xAA blocks, Level1 covers 0x70E4 blocks
+    DWORD blockMultiplier = (lvl == Zero) ? 0xAA : (lvl == One) ? 0x70E4 : 1;
+    toReturn.trueBlockNumber = ComputeLevelNBackingHashBlockNumber(index * blockMultiplier, lvl);
     DWORD baseHashAddress = ((toReturn.trueBlockNumber << 0xC) + firstHashTableAddress);
 
     // adjust the hash address
@@ -861,6 +935,9 @@ DWORD StfsPackage::GetHashTableEntryCount(DWORD index, Level lvl)
 
 void StfsPackage::Rehash()
 {
+    // Invalidate the cached hash table since we're rebuilding everything
+    cached.trueBlockNumber = 0xFFFFFFFF;
+    
     BYTE blockBuffer[0x1000];
     switch (topLevel)
     {
@@ -991,6 +1068,62 @@ void StfsPackage::Rehash()
 
     // Write new volume descriptor to the file
     metaData->WriteVolumeDescriptor();
+
+    DWORD headerStart;
+
+    // set the headerStart
+    if (flags & StfsPackagePEC)
+        headerStart = 0x23C;
+    else
+        headerStart = 0x344;
+
+    // calculate header size / first hash table address
+    DWORD calculated = ((metaData->headerSize + 0xFFF) & 0xF000);
+    DWORD headerSize = calculated - headerStart;
+
+    // read the data to hash
+    std::vector<BYTE> buffer(headerSize);
+    io->SetPosition(headerStart);
+    io->ReadBytes(buffer.data(), headerSize);
+
+    // hash the header
+    const auto sha1 = Botan::HashFunction::create_or_throw("SHA-1");
+    sha1->update(buffer.data(), headerSize);
+    sha1->final(metaData->headerHash);
+
+    metaData->WriteMetaData();
+}
+
+void StfsPackage::ReloadHashTable()
+{
+    // Recalculate top level and addressing (same logic as constructor)
+    topLevel = CalcualateTopLevel();
+    topTable.trueBlockNumber = ComputeLevelNBackingHashBlockNumber(0, topLevel);
+    topTable.level = topLevel;
+
+    DWORD baseAddress = (topTable.trueBlockNumber << 0xC) + firstHashTableAddress;
+    topTable.addressInFile = baseAddress + ((metaData->stfsVolumeDescriptor.blockSeparation & 2) << 0xB);
+    
+    // Seek to the top table address
+    io->SetPosition(topTable.addressInFile);
+
+    // Recalculate entry count
+    topTable.entryCount = metaData->stfsVolumeDescriptor.allocatedBlockCount /
+        dataBlocksPerHashTreeLevel[topLevel];
+    if (metaData->stfsVolumeDescriptor.allocatedBlockCount > 0x70E4 &&
+        (metaData->stfsVolumeDescriptor.allocatedBlockCount % 0x70E4 != 0))
+        topTable.entryCount++;
+    else if (metaData->stfsVolumeDescriptor.allocatedBlockCount > 0xAA &&
+        (metaData->stfsVolumeDescriptor.allocatedBlockCount % 0xAA != 0))
+        topTable.entryCount++;
+
+    // Re-read all hash entries from disk
+    for (DWORD i = 0; i < topTable.entryCount; i++)
+    {
+        io->ReadBytes(topTable.entries[i].blockHash, 0x14);
+        topTable.entries[i].status = io->ReadByte();
+        topTable.entries[i].nextBlock = io->ReadInt24();
+    }
 
     DWORD headerStart;
 
@@ -1929,10 +2062,10 @@ void StfsPackage::ReplaceFile(string path, StfsFileEntry* entry, string pathInPa
         // go to the next block position
         io->SetPosition(BlockToAddress(block));
 
-    std::vector<BYTE> toWrite(static_cast<size_t>(remainder));
-    fileIn.ReadBytes(toWrite.data(), remainder);
+        std::vector<BYTE> toWrite(remainder);
+        fileIn.ReadBytes(toWrite.data(), remainder);
 
-    io->Write(toWrite.data(), remainder);
+        io->Write(toWrite.data(), remainder);
     }
 
     // update the progress if needed
@@ -1963,6 +2096,9 @@ void StfsPackage::ReplaceFile(string path, StfsFileEntry* entry, string pathInPa
             topTable.entries[i].nextBlock = io->ReadInt24();
         }
     }
+
+    // Clear cached block chains since we just modified this file's chain
+    ClearCachedBlockChains();
 }
 
 void StfsPackage::ReplaceFile(string path, string pathInPackage, void (*replaceProgress)(void*,
@@ -2053,10 +2189,51 @@ void StfsPackage::GenerateBlockChain(StfsFileEntry *entry, bool forceRefresh)
     entry->blockChain.clear();
 
     INT24 currentBlock = entry->startingBlockNum;
-    entry->blockChain.push_back(currentBlock);
+    if (currentBlock == INT24_MAX)
+        return;
 
-    while ((currentBlock = GetBlockHashEntry(currentBlock).nextBlock) != INT24_MAX)
+    std::unordered_set<INT24> visitedBlocks;
+
+    while (currentBlock != INT24_MAX)
+    {
+        if (!visitedBlocks.insert(currentBlock).second)
+            break;
+
         entry->blockChain.push_back(currentBlock);
+
+        try
+        {
+            currentBlock = GetBlockHashEntry(currentBlock).nextBlock;
+        }
+        catch (...)
+        {
+            break;
+        }
+    }
+}
+
+void StfsPackage::ClearCachedBlockChains()
+{
+    // Clear block chains from all file entries in the listing
+    for (size_t i = 0; i < fileListing.fileEntries.size(); i++)
+    {
+        fileListing.fileEntries[i].blockChain.clear();
+    }
+    
+    // Recursively clear block chains from folder entries
+    std::function<void(StfsFileListing*)> clearInListing = [&](StfsFileListing* listing)
+    {
+        for (size_t i = 0; i < listing->fileEntries.size(); i++)
+        {
+            listing->fileEntries[i].blockChain.clear();
+        }
+        for (size_t i = 0; i < listing->folderEntries.size(); i++)
+        {
+            clearInListing(&listing->folderEntries[i]);
+        }
+    };
+    
+    clearInListing(&fileListing);
 }
 
 void StfsPackage::GenerateRawFileListing(StfsFileListing* in, vector<StfsFileEntry>* outFiles,

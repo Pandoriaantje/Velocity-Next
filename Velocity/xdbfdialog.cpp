@@ -1,8 +1,10 @@
 #include "xdbfdialog.h"
 #include "ui_xdbfdialog.h"
 
-XdbfDialog::XdbfDialog(QStatusBar *statusBar, GpdBase *gpd, bool *modified, QWidget *parent) :
-    QDialog(parent), ui(new Ui::XdbfDialog), gpd(gpd), modified(modified), statusBar(statusBar)
+#include <vector>
+
+XdbfDialog::XdbfDialog(QStatusBar *statusBar, std::unique_ptr<GpdBase> gpdIn, bool *modified, QWidget *parent) :
+    QDialog(parent), ui(new Ui::XdbfDialog), gpd(std::move(gpdIn)), modified(modified), statusBar(statusBar)
 {
     ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
@@ -118,8 +120,8 @@ void XdbfDialog::showContextMenu(QPoint p)
                     xentry = gpd->xdbf->avatarAwards.entries.at(e.index);
 
                 // extract the entry into memory
-                BYTE *entryBuff = new BYTE[xentry.length];
-                gpd->xdbf->ExtractEntry(xentry, entryBuff);
+                std::vector<BYTE> entryBuff(xentry.length);
+                gpd->xdbf->ExtractEntry(xentry, entryBuff.empty() ? nullptr : entryBuff.data());
 
                 QString outPath = path;
                 if (items.count() > 1)
@@ -127,11 +129,8 @@ void XdbfDialog::showContextMenu(QPoint p)
 
                 // Write the data to a file
                 FileIO io(outPath.toStdString(), true);
-                io.Write(entryBuff, xentry.length);
+                io.Write(entryBuff.empty() ? nullptr : entryBuff.data(), static_cast<DWORD>(entryBuff.size()));
                 io.Close();
-
-                // free the temporary memory
-                delete[] entryBuff;
             }
 
             statusBar->showMessage("Selected entries extracted successfully", 3000);
@@ -175,17 +174,15 @@ void XdbfDialog::showContextMenu(QPoint p)
             DWORD fileLen = io.GetPosition();
 
             // allocate enough memory for the buffer
-            BYTE *entryBuff = new BYTE[fileLen];
+            std::vector<BYTE> entryBuff(fileLen);
 
             // read in the file
             io.SetPosition(0);
-            io.ReadBytes(entryBuff, fileLen);
+            io.ReadBytes(entryBuff.empty() ? nullptr : entryBuff.data(), fileLen);
 
             xentry.length = fileLen;
-            gpd->xdbf->ReWriteEntry(xentry, entryBuff);
+            gpd->xdbf->ReWriteEntry(xentry, entryBuff.empty() ? nullptr : entryBuff.data());
 
-            // cleanup
-            delete[] entryBuff;
             io.Close();
             if (modified != nullptr)
                 *modified = true;
@@ -220,7 +217,7 @@ void XdbfDialog::showContextMenu(QPoint p)
     }
     else if (selectedItem->text() == "Address Converter")
     {
-        AddressConverterDialog *dialog = new AddressConverterDialog(gpd->xdbf, this);
+        AddressConverterDialog *dialog = new AddressConverterDialog(gpd->xdbf.get(), this);
         dialog->setAttribute(Qt::WA_DeleteOnClose);
         dialog->show();
     }
@@ -244,22 +241,21 @@ void XdbfDialog::showContextMenu(QPoint p)
                     "An error occurred while cleaning the Gpd.\n\n" + QString::fromStdString(error));
             return;
         }
-
         // reload the listing
         ui->treeWidget->clear();
         loadEntries();
-
         if (modified != nullptr)
             *modified = true;
 
         statusBar->showMessage("Cleaned Gpd successfully", 3000);
     }
+
 }
 
 XdbfDialog::~XdbfDialog()
 {
-    gpd->Close();
-    delete gpd;
+    if (gpd)
+        gpd->Close();
     delete ui;
 }
 
@@ -344,7 +340,7 @@ void XdbfDialog::on_treeWidget_doubleClicked(const QModelIndex &index)
                     break;
                 case UnicodeString:
                 {
-                    QString str = QString::fromStdWString(*setting.str);
+                    QString str = QString::fromStdWString(setting.str);
                     if (str.trimmed() != "")
                         QMessageBox::about(this, "Setting",
                                 "<html><center><h3>String Setting</h3><br />" + str + "</center></html>");
@@ -366,7 +362,9 @@ void XdbfDialog::on_treeWidget_doubleClicked(const QModelIndex &index)
         }
         case Image:
         {
-            QByteArray imageBuff((char*)gpd->images.at(e.index).image, (size_t)gpd->images.at(e.index).length);
+            const auto &imageEntry = gpd->images.at(e.index);
+            QByteArray imageBuff(reinterpret_cast<const char*>(imageEntry.image.data()),
+                                 static_cast<int>(imageEntry.length));
 
             ImageDialog *dialog = new ImageDialog(QImage::fromData(imageBuff), "", this);
             dialog->setAttribute(Qt::WA_DeleteOnClose);

@@ -7,7 +7,7 @@ XContentDeviceTitle::XContentDeviceTitle() :
 }
 
 XContentDeviceTitle::XContentDeviceTitle(std::string pathOnDevice, std::string rawName) :
-    pathOnDevice(pathOnDevice), XContentDeviceItem(pathOnDevice, rawName, NULL)
+    XContentDeviceItem(pathOnDevice, rawName, nullptr), pathOnDevice(std::move(pathOnDevice))
 {
 
 }
@@ -22,13 +22,13 @@ std::wstring XContentDeviceTitle::GetName()
 BYTE *XContentDeviceTitle::GetThumbnail()
 {
     if (titleSaves.size() == 0)
-        return NULL;
+        return nullptr;
     auto *metaData = titleSaves.at(0).content->metaData;
     if (!metaData->titleThumbnailImage.empty())
         return metaData->titleThumbnailImage.data();
     if (!metaData->thumbnailImage.empty())
         return metaData->thumbnailImage.data();
-    return NULL;
+    return nullptr;
 }
 
 DWORD XContentDeviceTitle::GetThumbnailSize()
@@ -48,6 +48,6 @@ DWORD XContentDeviceTitle::GetTitleID()
 BYTE *XContentDeviceTitle::GetProfileID()
 {
     if (titleSaves.size() == 0)
-        return NULL;
+        return nullptr;
     return titleSaves.at(0).content->metaData->profileID;
 }

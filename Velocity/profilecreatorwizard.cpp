@@ -137,15 +137,15 @@ void ProfileCreatorWizard::onFinished(int status)
         wstring picKey = L"fffe07d10002000" + QString::number(
                     ui->listWidget->currentIndex().row()).toStdWString() + L"0001000" + QString::number(
                     ui->listWidget->currentIndex().row()).toStdWString();
-        dashGpd.gamerPictureKey.str = &picKey;
+        dashGpd.gamerPictureKey.str = picKey;
         dashGpd.WriteSettingEntry(dashGpd.gamerPictureKey);
 
         // if the avatar type is female, then we must change the avatar info setting
         if (ui->rdiFemale->isChecked())
         {
-            memcpy(dashGpd.avatarInformation.binaryData.data, ___femaleAvatar_bin, ___femaleAvatar_bin_size);
-            dashGpd.avatarInformation.binaryData.length = ___femaleAvatar_bin_size;
-            dashGpd.WriteSettingEntry(dashGpd.avatarInformation);
+              dashGpd.avatarInformation.binaryData.assign(___femaleAvatar_bin,
+                                                 ___femaleAvatar_bin + ___femaleAvatar_bin_size);
+              dashGpd.WriteSettingEntry(dashGpd.avatarInformation);
         }
 
         QByteArray ba3;
@@ -158,9 +158,9 @@ void ProfileCreatorWizard::onFinished(int status)
 
         // inject the image
         ImageEntry image;
-        image.image = new BYTE[ba3.length()];
-        memcpy(image.image, (BYTE*)ba3.data(), ba3.length());
-        image.length = ba3.length();
+    image.image.assign(reinterpret_cast<const BYTE*>(ba3.data()),
+               reinterpret_cast<const BYTE*>(ba3.data()) + ba3.length());
+    image.length = ba3.length();
 
         dashGpd.CreateImageEntry(&image, AvatarImage);
 

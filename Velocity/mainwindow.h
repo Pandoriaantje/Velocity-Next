@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <vector>
+#include <memory>
 
 // qt
 #include "ui_mainwindow.h"
@@ -70,7 +71,7 @@ class MainWindow;
 
 struct Arguments
 {
-    StfsPackage *package;
+    std::shared_ptr<StfsPackage> package;
     QString tempFilePath;
     bool fromPackageViewer;
 };

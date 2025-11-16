@@ -1,5 +1,6 @@
 #include "gpduploader.h"
 #include <QUrlQuery>
+#include <memory>
 
 GpdUploader::GpdUploader(QStringList gamePaths, QStringList avatarPaths, QStringList titleIDs,
         bool deleteGpds, QObject *parent = 0) : QObject(parent), gamePaths(gamePaths),
@@ -25,29 +26,32 @@ GpdUploader::GpdUploader(QStringList gamePaths, QStringList avatarPaths, QString
     else
     {
         // remove temporary files
-        foreach (QString gamePath, gamePaths)
-            QFile::remove(gamePath);
+        foreach (const QString &gamePath, gamePaths)
+        {
+            if (!gamePath.isEmpty() && QFile::exists(gamePath) && !QFile::remove(gamePath))
+                qWarning() << "GpdUploader: Failed to remove temporary game GPD" << gamePath;
+        }
 
-        foreach (QString avatarPath, avatarPaths)
-            QFile::remove(avatarPath);
+        foreach (const QString &avatarPath, avatarPaths)
+        {
+            if (!avatarPath.isEmpty() && QFile::exists(avatarPath) && !QFile::remove(avatarPath))
+                qWarning() << "GpdUploader: Failed to remove temporary award GPD" << avatarPath;
+        }
     }
 }
 
 void GpdUploader::uploadGpd(QString gamePath, QString awardPath, QString titleID)
 {
-    GameGpd *gpd = nullptr;
+    std::shared_ptr<GameGpd> gpd;
     try
     {
         // open the Gpd
         try
         {
-            gpd = new GameGpd(gamePath.toStdString());
+            gpd = std::make_shared<GameGpd>(gamePath.toStdString());
         }
         catch (string error)
         {
-            if (gpd)
-                delete gpd;
-
             qDebug() << titleID << " Error: " << QString::fromStdString(error);
             return;
         }
@@ -64,7 +68,7 @@ void GpdUploader::uploadGpd(QString gamePath, QString awardPath, QString titleID
         if (QFile::exists(awardPath))
         {
             // open the award gpd, get the amount of awards
-            AvatarAwardGpd agpd(awardPath.toStdString());
+        AvatarAwardGpd agpd(awardPath.toStdString());
             awards = agpd.avatarAwards.size();
 
             for (DWORD x = 0; x < agpd.avatarAwards.size(); x++)
@@ -126,10 +130,9 @@ void GpdUploader::uploadGpd(QString gamePath, QString awardPath, QString titleID
         gpd->Close();
 
         // get the arguments before deleting the gpd
-        QString titleName = QString::fromStdWString(gpd->gameName.ws);
-        DWORD achievementCount = gpd->achievements.size();
-        delete gpd;
-        gpd = nullptr;
+    QString titleName = QString::fromStdWString(gpd->gameName.ws);
+    DWORD achievementCount = gpd->achievements.size();
+    gpd.reset();
 
         // send the Gpd(s) to the server
         sendRequest(gamePath, (QFile::exists(awardPath)) ? awardPath : "", titleName, titleID,
@@ -144,8 +147,7 @@ void GpdUploader::uploadGpd(QString gamePath, QString awardPath, QString titleID
         qDebug() << "unknown error (uploading gpd)";
     }
 
-    if (gpd)
-        delete gpd;
+    gpd.reset();
 }
 
 void GpdUploader::reply(QNetworkReply *reply)

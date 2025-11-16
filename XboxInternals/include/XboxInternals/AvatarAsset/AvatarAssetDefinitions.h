@@ -1,6 +1,7 @@
 #pragma once
 
 #include <XboxInternals/TypeDefinitions.h>
+#include <vector>
 
 enum AssetSubcategory
 {
@@ -178,7 +179,7 @@ struct ColorTableEntry
 struct ColorTable
 {
     DWORD count;
-    ColorTableEntry *entries;
+    std::vector<ColorTableEntry> entries;
 };
 
 struct Animation
@@ -194,7 +195,7 @@ struct STRBBlock
     int dataLength;
     int fieldSize;
 
-    BYTE *data;
+    std::vector<BYTE> data;
     DWORD dataAddress;
 };
 

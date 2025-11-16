@@ -41,9 +41,6 @@ DeviceViewer::DeviceViewer(QStatusBar *statusBar, QList<QAction *> gpdActions,
 
 DeviceViewer::~DeviceViewer()
 {
-    for (size_t i = 0; i < loadedDrives.size(); i++)
-        delete loadedDrives.at(i);
-
     delete ui;
 }
 
@@ -346,8 +343,10 @@ void DeviceViewer::LoadDrives()
     // clear all the items
     ui->treeWidget->clear();
 
-    for (size_t i = 0; i < loadedDrives.size(); i++)
-        delete loadedDrives.at(i);
+    loadedDrives.clear();
+    currentDrive = nullptr;
+    currentDriveItem = nullptr;
+    drivesLoaded = false;
 
     try
     {
@@ -360,10 +359,11 @@ void DeviceViewer::LoadDrives()
 
         for (size_t i = 0; i < loadedDrives.size(); i++)
         {
+            FatxDrive *drive = loadedDrives.at(i).get();
             QTreeWidgetItem *driveItem = new QTreeWidgetItem(ui->treeWidget_2);
-            driveItem->setData(0, Qt::UserRole, QVariant::fromValue(loadedDrives.at(i)));
+            driveItem->setData(0, Qt::UserRole, QVariant::fromValue(drive));
 
-            if (loadedDrives.at(i)->GetFatxDriveType() == FatxHarddrive)
+            if (drive->GetFatxDriveType() == FatxHarddrive)
             {
                 driveItem->setIcon(0, QIcon(":/Images/harddrive.png"));
                 driveItem->setText(0, "Hard Drive");
@@ -375,7 +375,7 @@ void DeviceViewer::LoadDrives()
             }
 
             // load the partion information
-            std::vector<Partition*> parts = loadedDrives.at(i)->GetPartitions();
+            std::vector<Partition*> parts = drive->GetPartitions();
             for (size_t j = 0; j < parts.size(); j++)
             {
                 QTreeWidgetItem *secondItem = new QTreeWidgetItem(driveItem);
@@ -388,12 +388,12 @@ void DeviceViewer::LoadDrives()
             }
 
             // load the name of the drive
-            FatxFileEntry *nameEntry = loadedDrives.at(i)->GetFileEntry("Drive:\\Content\\name.txt");
-            QString name = (loadedDrives.at(i)->GetFatxDriveType() == FatxHarddrive) ? "Hard Drive" :
+            FatxFileEntry *nameEntry = drive->GetFileEntry("Drive:\\Content\\name.txt");
+            QString name = (drive->GetFatxDriveType() == FatxHarddrive) ? "Hard Drive" :
                     "Flash Drive";
             if (nameEntry)
             {
-                FatxIO nameFile = loadedDrives.at(i)->GetFatxIO(nameEntry);
+                FatxIO nameFile = drive->GetFatxIO(nameEntry);
                 nameFile.SetPosition(0);
 
                 // make sure that it starts with 0xFEFF
@@ -406,7 +406,7 @@ void DeviceViewer::LoadDrives()
             previousName = name;
         }
 
-        currentDrive = loadedDrives.at(0);
+        currentDrive = loadedDrives.at(0).get();
         currentDriveItem = ui->treeWidget_2->topLevelItem(0);
         LoadPartitions();
         drivesLoaded = true;

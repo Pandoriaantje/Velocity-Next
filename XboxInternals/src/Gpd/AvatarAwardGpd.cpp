@@ -16,6 +16,7 @@ AvatarAwardGpd::AvatarAwardGpd(FileIO *io) : GpdBase(io)
 void AvatarAwardGpd::CleanGpd()
 {
     xdbf->Clean();
+    io = xdbf->io;
 }
 
 void AvatarAwardGpd::init()
@@ -81,7 +82,7 @@ void AvatarAwardGpd::UnlockAllAwards()
         io->SetPosition(xdbf->GetRealAddress(avatarAwards.at(i).entry.addressSpecifier) + 0x18);
         io->Write(avatarAwards.at(i).flags);
 
-        // update the sync crap
+        // Update synchronization data
         xdbf->UpdateEntry(&avatarAwards.at(i).entry);
     }
 
@@ -207,12 +208,6 @@ WORD AvatarAwardGpd::getNextAwardIndex()
     }
 
     return highest + 1;
-}
-
-AvatarAwardGpd::~AvatarAwardGpd(void)
-{
-    if (!ioPassedIn)
-        io->Close();
 }
 
 

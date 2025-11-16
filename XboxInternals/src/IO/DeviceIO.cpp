@@ -1,4 +1,6 @@
 #include <XboxInternals/IO/DeviceIO.h>
+
+#include <memory>
 #include <string.h>
 
 #ifdef _WIN32
@@ -34,16 +36,18 @@ class DeviceIO::Impl
 {
 public:
 #ifdef _WIN32
+    Impl() : deviceHandle(INVALID_HANDLE_VALUE), offset{} {}
     HANDLE deviceHandle;
     OVERLAPPED offset;
 #else
+    Impl() : device(-1), offset(0) {}
     int device;
     INT64 offset;
 #endif
 };
 
 DeviceIO::DeviceIO(std::string devicePath) :
-    impl(new Impl), lastReadOffset(-1)
+    impl(std::make_unique<Impl>()), lastReadOffset(-1)
 {
     // convert it to a wstring
     std::wstring wsDevicePath;
@@ -54,7 +58,7 @@ DeviceIO::DeviceIO(std::string devicePath) :
 }
 
 DeviceIO::DeviceIO(std::wstring devicePath) :
-    impl(new Impl), lastReadOffset(-1)
+    impl(std::make_unique<Impl>()), lastReadOffset(-1)
 {
     // load the device
     loadDevice(devicePath);
@@ -62,10 +66,7 @@ DeviceIO::DeviceIO(std::wstring devicePath) :
 
 DeviceIO::~DeviceIO()
 {
-    if (impl)
-    {
-        delete impl;
-    }
+    Close();
 }
 
 void DeviceIO::ReadBytes(BYTE *outBuffer, DWORD len)
@@ -361,11 +362,15 @@ UINT64 DeviceIO::GetPosition()
 void DeviceIO::Close()
 {
 #if defined _WIN32
-    if (impl->deviceHandle != INVALID_HANDLE_VALUE)
+    if (impl && impl->deviceHandle != INVALID_HANDLE_VALUE) {
         CloseHandle(impl->deviceHandle);
+        impl->deviceHandle = INVALID_HANDLE_VALUE;
+    }
 #else
-    close(impl->device);
-    impl->device = -1;
+    if (impl && impl->device != -1) {
+        close(impl->device);
+        impl->device = -1;
+    }
 #endif
 }
 

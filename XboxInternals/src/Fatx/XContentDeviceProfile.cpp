@@ -8,19 +8,19 @@ XContentDeviceProfile::XContentDeviceProfile() :
 
 }
 
-XContentDeviceProfile::XContentDeviceProfile(FatxFileEntry *fileEntry, IXContentHeader *profile) :
-    XContentDeviceItem(fileEntry, profile)
+XContentDeviceProfile::XContentDeviceProfile(FatxFileEntry *fileEntry, std::shared_ptr<IXContentHeader> profile) :
+    XContentDeviceItem(fileEntry, std::move(profile))
 {
 }
 
-XContentDeviceProfile::XContentDeviceProfile(std::string pathOnDevice, std::string rawName, IXContentHeader *profile, DWORD fileSize) :
-    XContentDeviceItem(pathOnDevice, rawName, profile, fileSize)
+XContentDeviceProfile::XContentDeviceProfile(std::string pathOnDevice, std::string rawName, std::shared_ptr<IXContentHeader> profile, DWORD fileSize) :
+    XContentDeviceItem(pathOnDevice, rawName, std::move(profile), fileSize)
 {
 }
 
 BYTE *XContentDeviceProfile::GetProfileID()
 {
-    if (content != NULL)
+    if (content)
     {
         return content->metaData->profileID;
     }
@@ -29,7 +29,7 @@ BYTE *XContentDeviceProfile::GetProfileID()
         if (titles.size() != 0 && titles.at(0).titleSaves.size() != 0)
             return titles.at(0).titleSaves.at(0).content->metaData->profileID;
         else
-            return NULL;
+            return nullptr;
     }
 }
 
@@ -39,14 +39,14 @@ std::wstring XContentDeviceProfile::GetName()
     if (gamertag.size() == 0)
     {
         ConsoleType consoleType;
-        if (content != NULL)
+        if (content)
             consoleType = content->metaData->certificate.consoleTypeFlags ? DevKit : Retail;
         else
             return L"Unknown Profile";
 
         try
         {
-            auto *stfsPackage = dynamic_cast<StfsPackage*>(content);
+            auto *stfsPackage = dynamic_cast<StfsPackage*>(content.get());
             if (stfsPackage == nullptr)
                 return L"Unknown Profile";
 

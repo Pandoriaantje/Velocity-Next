@@ -24,27 +24,24 @@
     #endif
 #endif
 
-std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
+std::vector<std::unique_ptr<FatxDrive>> FatxDriveDetection::GetAllFatxDrives()
 {
     std::vector<std::wstring> logicalDrivePaths = getLogicalDrives();
-    std::vector<FatxDrive*> drives;
+    std::vector<std::unique_ptr<FatxDrive>> drives;
 
-    std::vector<DeviceIO*> devices = getPhysicalDisks();
+    auto devices = getPhysicalDisks();
 
-    for (int i = 0; i < devices.size(); i++)
+    for (auto &device : devices)
     {
         try
         {
-            if (devices.at(i)->Length() > HddOffsets::Data)
+            if (device && device->Length() > HddOffsets::Data)
             {
-                devices.at(i)->SetPosition(HddOffsets::Data);
-                if (devices.at(i)->ReadDword() == FATX_MAGIC)
+                device->SetPosition(HddOffsets::Data);
+                if (device->ReadDword() == FATX_MAGIC)
                 {
-                    FatxDrive *drive = new FatxDrive(static_cast<BaseIO*>(devices.at(i)), FatxHarddrive);
-                    drives.push_back(drive);
+                    drives.push_back(std::make_unique<FatxDrive>(std::move(device), FatxHarddrive));
                 }
-                else
-                    devices.at(i)->Close();
             }
         }
         catch (...)
@@ -53,7 +50,7 @@ std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
     }
 
     std::vector<std::string> dataFiles;
-    for (int i = 0; i < logicalDrivePaths.size(); i++)
+    for (const auto &logicalDrivePath : logicalDrivePaths)
     {
         // clear data files from the previous drive
         dataFiles.clear();
@@ -61,13 +58,13 @@ std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
         try
         {
             std::string directory;
-            directory.assign(logicalDrivePaths.at(i).begin(), logicalDrivePaths.at(i).end());
+            directory.assign(logicalDrivePath.begin(), logicalDrivePath.end());
 
 
             #ifdef _WIN32
                 WIN32_FIND_DATA fi;
 
-                HANDLE h = FindFirstFile((logicalDrivePaths.at(i) + L"\\Data*").c_str(), &fi);
+                HANDLE h = FindFirstFile((logicalDrivePath + L"\\Data*").c_str(), &fi);
                 if (h != INVALID_HANDLE_VALUE)
                 {
                     do
@@ -84,9 +81,8 @@ std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
                     {
                         // make sure the data files are loaded in the right order
                         std::sort(dataFiles.begin(), dataFiles.end());
-                        JoinedMultiFileIO *io = new JoinedMultiFileIO(dataFiles);
-                        FatxDrive *usbDrive = new FatxDrive(io, FatxFlashDrive);
-                        drives.push_back(usbDrive);
+                        drives.push_back(std::make_unique<FatxDrive>(
+                                std::make_unique<JoinedMultiFileIO>(dataFiles), FatxFlashDrive));
                     }
                 }
             #else
@@ -107,9 +103,8 @@ std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
                     {
                         // make sure the data files are loaded in the right order
                         std::sort(dataFiles.begin(), dataFiles.end());
-                        MultiFileIO *io = new MultiFileIO(dataFiles);
-                        FatxDrive *usbDrive = new FatxDrive(io, FatxFlashDrive);
-                        drives.push_back(usbDrive);
+                        drives.push_back(std::make_unique<FatxDrive>(
+                                std::make_unique<MultiFileIO>(dataFiles), FatxFlashDrive));
                     }
                 }
             #endif
@@ -122,9 +117,9 @@ std::vector<FatxDrive*> FatxDriveDetection::GetAllFatxDrives()
     return drives;
 }
 
-std::vector<DeviceIO*> FatxDriveDetection::getPhysicalDisks()
+std::vector<std::unique_ptr<DeviceIO>> FatxDriveDetection::getPhysicalDisks()
 {
-    std::vector<DeviceIO*> physicalDiskPaths;
+    std::vector<std::unique_ptr<DeviceIO>> physicalDiskPaths;
     std::wstringstream ss;
 
 #ifdef _WIN32
@@ -137,8 +132,7 @@ std::vector<DeviceIO*> FatxDriveDetection::getPhysicalDisks()
         {
             CloseHandle(drive);
 
-            DeviceIO *io = new DeviceIO(ss.str());
-            physicalDiskPaths.push_back(io);
+            physicalDiskPaths.push_back(std::make_unique<DeviceIO>(ss.str()));
         }
 
         ss.str(std::wstring());
@@ -174,16 +168,13 @@ std::vector<DeviceIO*> FatxDriveDetection::getPhysicalDisks()
                 {
                     close(device);
 
-                    DeviceIO *io = new DeviceIO(diskPath);
-                    physicalDiskPaths.push_back(io);
+                    physicalDiskPaths.push_back(std::make_unique<DeviceIO>(diskPath));
                 }
             }
         }
     }
     if (dir)
         closedir(dir);
-    if (ent)
-        delete ent;
 #endif
 
     return physicalDiskPaths;

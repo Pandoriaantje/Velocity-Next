@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <memory>
 #include <XboxInternals/IO/FileIO.h>
 #include <XboxInternals/Gpd/XdbfDefinitions.h>
 #include <XboxInternals/Gpd/XdbfHelpers.h>
@@ -11,13 +12,15 @@
 
 using std::string;
 using std::vector;
+using std::shared_ptr;
 
 class XBOXINTERNALS_EXPORT Xdbf
 {
 public:
-    Xdbf(string gpdPath);
-    Xdbf(FileIO *io);
-    ~Xdbf();
+    explicit Xdbf(const string &gpdPath);
+    explicit Xdbf(shared_ptr<FileIO> io);
+    explicit Xdbf(FileIO *io) : Xdbf(shared_ptr<FileIO>(io)) {}
+    ~Xdbf() = default;
 
     XdbfEntryGroup achievements;
     vector<XdbfEntry> images;
@@ -35,7 +38,7 @@ public:
     // Description: convert a specifier address into a real address
     DWORD GetRealAddress(DWORD specifier);
 
-    // Description: convert a real address into a specifer
+    // Description: convert a real address into a specifier
     DWORD GetSpecifier(DWORD address);
 
     // Description: create a new entry and new sync in the file and return the entry
@@ -44,7 +47,7 @@ public:
     // Description: allocate memory in the file
     DWORD AllocateMemory(DWORD size);
 
-    // Description: free memory in the file at the specifer address
+    // Description: free memory in the file at the specifier address
     void DeallocateMemory(DWORD addr, DWORD size);
 
     // Description: move the sync to the queue
@@ -55,10 +58,9 @@ public:
 
     // Description: re-Write an entry
     void ReWriteEntry(XdbfEntry entry, BYTE *entryBuffer);
-    FileIO *io;
+    shared_ptr<FileIO> io;
 
 private:
-    bool ioPassedIn;
     XdbfHeader header;
     vector<XdbfFreeMemEntry> freeMemory;
 

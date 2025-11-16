@@ -33,19 +33,27 @@ FatxDrive::FatxDrive(std::string drivePath, FatxDriveType type)  : type(type)
     loadFatxDrive(wsDrivePath);
 }
 
-FatxDrive::FatxDrive(BaseIO *io, FatxDriveType type) : io(io), type(type)
-{
-    loadFatxDrive();
-}
-
 FatxDrive::FatxDrive(std::wstring drivePath, FatxDriveType type) : type(type)
 {
     loadFatxDrive(drivePath);
 }
 
+FatxDrive::FatxDrive(std::unique_ptr<BaseIO> io, FatxDriveType type) : io(std::move(io)), type(type)
+{
+    loadFatxDrive();
+}
+
+FatxDrive::FatxDrive(BaseIO *io, FatxDriveType type) : FatxDrive(std::unique_ptr<BaseIO>(io), type)
+{
+}
+
 std::vector<Partition*> FatxDrive::GetPartitions()
 {
-    return partitions;
+    std::vector<Partition*> rawPartitions;
+    for (const auto& p : partitions) {
+        rawPartitions.push_back(p.get());
+    }
+    return rawPartitions;
 }
 
 FatxDriveType FatxDrive::GetFatxDriveType()
@@ -59,7 +67,7 @@ FatxIO FatxDrive::GetFatxIO(FatxFileEntry *entry)
     if (entry->clusterChain.size() == 0)
         ReadClusterChain(entry);
 
-    return FatxIO(static_cast<DeviceIO*>(io), entry);
+    return FatxIO(static_cast<DeviceIO*>(io.get()), entry);
 }
 
 void FatxDrive::processBootSector(Partition *part)
@@ -247,7 +255,7 @@ FatxFileEntry* FatxDrive::createFileEntry(FatxFileEntry *parent, FatxFileEntry *
     DWORD fileSize = newEntry->fileSize;
     newEntry->fileSize = 0;
 
-    FatxIO childIO(static_cast<DeviceIO*>(io), newEntry);
+    FatxIO childIO(static_cast<DeviceIO*>(io.get()), newEntry);
     childIO.AllocateMemory(fileSize);
     childIO.WriteEntryToDisk();
 
@@ -310,7 +318,7 @@ void FatxDrive::RemoveFile(FatxFileEntry *entry, void(*progress)(void*), void *a
 
     // set all the clusters to available
     entry->clusterChain.push_back(entry->startingCluster);
-    FatxIO::SetAllClusters(static_cast<DeviceIO*>(io), entry->partition, entry->clusterChain, FAT_CLUSTER_AVAILABLE);
+    FatxIO::SetAllClusters(static_cast<DeviceIO*>(io.get()), entry->partition, entry->clusterChain, FAT_CLUSTER_AVAILABLE);
 
     // generate cluster ranges for fast insertion into the cluster chain
     std::vector<Range> clusterRanges;
@@ -520,7 +528,8 @@ void FatxDrive::ReadClusterChain(FatxFileEntry *entry)
 
 void FatxDrive::Close()
 {
-    io->Close();
+    if (io)
+        io->Close();
 }
 
 void FatxDrive::CreateBackup(std::string outPath, void (*progress)(void *, DWORD, DWORD), void *arg)
@@ -550,7 +559,7 @@ void FatxDrive::CreateBackup(std::string outPath, void (*progress)(void *, DWORD
 
     if (driveLen > 0)
     {
-        // read the crap at the end
+        // Read remaining data
         const DWORD tailSize = static_cast<DWORD>(driveLen);
         io->ReadBytes(buffer.data(), tailSize);
         outBackup.WriteBytes(buffer.data(), tailSize);
@@ -718,13 +727,8 @@ bool FatxDrive::validFileChar(char c)
 
 FatxDrive::~FatxDrive()
 {
-    for (int i = 0, count = partitions.size(); i < count; i++)
-    {
-        delete partitions[i];
-    }
-
-    io->Close();
-    delete io;
+    if (io)
+        io->Close();
 }
 
 bool FatxDrive::operator==(FatxDrive &other) const
@@ -788,7 +792,7 @@ void FatxDrive::loadFatxDrive(std::wstring drivePath)
     if (type == FatxHarddrive)
     {
         // open the device io
-        io = new DeviceIO(drivePath);
+        io = std::make_unique<DeviceIO>(drivePath);
     }
     else if (type == FatxFlashDrive)
     {
@@ -801,7 +805,7 @@ void FatxDrive::loadFatxDrive(std::wstring drivePath)
             ss.str(std::string());
         }
 
-        io = new JoinedMultiFileIO(dataFiles);
+        io = std::make_unique<JoinedMultiFileIO>(dataFiles);
     }
 
     loadFatxDrive();
@@ -855,7 +859,7 @@ void FatxDrive::loadFatxDrive()
         // check for type 1/2
         io->SetPosition(0);
         if (configurationData.securityLength == 0x228)
-            ReadCertificateEx(&configurationData.certificate, io, 0);
+            ReadCertificateEx(&configurationData.certificate, io.get(), 0);
         else if (configurationData.securityLength == 0x100)
             io->ReadBytes(configurationData.deviceSignature, 0x100);
         else
@@ -868,29 +872,29 @@ void FatxDrive::loadFatxDrive()
     // Eaton determined this was a version struct and figured out the minimum version
     if (lastFormatRecoveryVersion.major == 2 && lastFormatRecoveryVersion.build >= 1525 && lastFormatRecoveryVersion.revision >= 1)
     {
-        Partition *content = new Partition;
+        auto content = std::make_unique<Partition>();
         content->address = (UINT64)io->ReadDword() * FAT_SECTOR_SIZE;
         content->size = (UINT64)io->ReadDword() * FAT_SECTOR_SIZE;
         content->name = "Content";
 
-        Partition *dashboard = new Partition;
+        auto dashboard = std::make_unique<Partition>();
         dashboard->address = (UINT64)io->ReadDword() * FAT_SECTOR_SIZE;
         dashboard->size = (UINT64)io->ReadDword() * FAT_SECTOR_SIZE;
         dashboard->name = "Xbox 360 Dashboard";
 
-        partitions.push_back(content);
-        partitions.push_back(dashboard);
+        partitions.push_back(std::move(content));
+        partitions.push_back(std::move(dashboard));
     }
     else
     {
         // system extended partition initialization
-        Partition *systemExtended = new Partition;
+        auto systemExtended = std::make_unique<Partition>();
         systemExtended->address = (type == FatxHarddrive) ? +HddOffsets::SystemExtended : +UsbOffsets::SystemExtended;
         systemExtended->size = (type == FatxHarddrive) ? +HddSizes::SystemExtended : +UsbSizes::SystemExtended;
         systemExtended->name = "System Extended";
 
         // system auxiliary partition initialization
-        Partition *systemAuxiliary = new Partition;
+        auto systemAuxiliary = std::make_unique<Partition>();
         systemAuxiliary->address = (type == FatxHarddrive) ? +HddOffsets::SystemAuxiliary : +UsbOffsets::SystemAuxiliary;
         systemAuxiliary->size = (type == FatxHarddrive) ? +HddSizes::SystemAuxiliary : +UsbSizes::SystemAuxiliary;
         systemAuxiliary->name = "System Auxiliary";
@@ -898,41 +902,40 @@ void FatxDrive::loadFatxDrive()
         if (type == FatxHarddrive)
         {
             // system partition initialization
-            Partition *systemPartition = new Partition;
+            auto systemPartition = std::make_unique<Partition>();
             systemPartition->address = HddOffsets::SystemPartition;
             systemPartition->size = HddSizes::SystemPartition;
             systemPartition->name = "System Partition";
-            this->partitions.push_back(systemPartition);
+            this->partitions.push_back(std::move(systemPartition));
         }
 
         // system cache partition initialization
-        Partition *systemCache = new Partition;
+        auto systemCache = std::make_unique<Partition>();
         systemCache->address = (type == FatxHarddrive) ? +HddOffsets::SystemCache : +UsbOffsets::SystemCache;
         systemCache->size = (type == FatxHarddrive) ? +HddSizes::SystemCache : +UsbSizes::SystemCache;
         systemCache->name = "System Cache";
 
         // content partition initialization
-        Partition *content = new Partition;
+        auto content = std::make_unique<Partition>();
         content->address = (type == FatxHarddrive) ? +HddOffsets::Data : +UsbOffsets::Data;
         content->size = io->Length() - content->address;
         content->name = "Content";
 
         // add the partitions to the vector
-        this->partitions.push_back(systemExtended);
-        this->partitions.push_back(systemAuxiliary);
-        this->partitions.push_back(systemCache);
-        this->partitions.push_back(content);
+        this->partitions.push_back(std::move(systemExtended));
+        this->partitions.push_back(std::move(systemAuxiliary));
+        this->partitions.push_back(std::move(systemCache));
+        this->partitions.push_back(std::move(content));
     }
 
     // process all bootsectors
     for (size_t i = 0; i < this->partitions.size(); )
     {
-        processBootSector(this->partitions.at(i));
+        processBootSector(this->partitions.at(i).get());
 
         // if there's invalid magic
         if (this->partitions.at(i)->address == 0)
         {
-            delete partitions.at(i);
             partitions.erase(partitions.begin() + i);
         }
         else
@@ -1019,10 +1022,7 @@ UINT64 FatxDrive::GetDeviceSize()
 
 void FatxDrive::ReloadDrive()
 {
-    for (int i = 0, count = partitions.size(); i < count; i++)
-        delete partitions[i];
     partitions.clear();
-
     loadFatxDrive();
 }
 
@@ -1075,7 +1075,7 @@ FatxFileEntry* FatxDrive::GetFileEntry(std::string filePath)
     {
         if (partitions.at(i)->name == partitionName)
         {
-            part = partitions.at(i);
+            part = partitions.at(i).get();
             break;
         }
     }

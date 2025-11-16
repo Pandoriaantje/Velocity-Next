@@ -4,6 +4,7 @@
 
 #ifndef _WIN32
 #include <fstream>
+#include <memory>
 #endif
 
 BigFileIO::BigFileIO(std::string filePath, bool create)
@@ -20,17 +21,15 @@ BigFileIO::BigFileIO(std::string filePath, bool create)
         throw std::string("BigFileIO: Unable to open the file.");
     }
 #else
-    fstr = nullptr;
     length = 0;
     std::ios::openmode mode = std::ios::binary | std::ios::in | std::ios::out;
     if (create) {
         mode |= std::ios::trunc;
     }
 
-    fstr = new std::fstream(this->filePath, mode);
-    if (!fstr->is_open()) {
-        delete fstr;
-        fstr = nullptr;
+    fstr = std::make_unique<std::fstream>(this->filePath, mode);
+    if (!fstr || !fstr->is_open()) {
+        fstr.reset();
         throw std::string("BigFileIO: Unable to open the file.");
     }
 
@@ -169,8 +168,7 @@ void BigFileIO::Close()
 #else
     if (fstr) {
         fstr->close();
-        delete fstr;
-        fstr = nullptr;
+        fstr.reset();
         length = 0;
     }
 #endif

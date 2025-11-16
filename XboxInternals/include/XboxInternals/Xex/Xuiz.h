@@ -6,6 +6,7 @@
 #include <XboxInternals/TypeDefinitions.h>
 #include <XboxInternals/Export.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -38,7 +39,7 @@ public:
 
 private:
     BaseIO *io;
-    bool freeIO;
+    std::unique_ptr<BaseIO> ownedIO;
     std::vector<XuizFileEntry> files;
 
     void Parse();

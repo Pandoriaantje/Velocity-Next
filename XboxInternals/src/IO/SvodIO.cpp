@@ -175,15 +175,15 @@ void SvodIO::WriteBytes(BYTE *buffer, DWORD len)
 void SvodIO::SaveFile(string savePath, void(*progress)(void*, DWORD, DWORD), void *arg)
 {
     FileIO outFile(savePath, true);
-    BYTE *buffer = new BYTE[0x10000];
+    std::vector<BYTE> buffer(0x10000);
     DWORD fileLen = fileEntry.size;
     DWORD total = (fileLen + 0xFFFF) / 0x10000;
     DWORD cur = 0;
 
     while (fileLen >= 0x10000)
     {
-        ReadBytes(buffer, 0x10000);
-        outFile.Write(buffer, 0x10000);
+        ReadBytes(buffer.data(), 0x10000);
+        outFile.Write(buffer.data(), 0x10000);
         fileLen -= 0x10000;
 
         if (progress)
@@ -192,15 +192,14 @@ void SvodIO::SaveFile(string savePath, void(*progress)(void*, DWORD, DWORD), voi
 
     if (fileLen != 0)
     {
-        ReadBytes(buffer, fileLen);
-        outFile.Write(buffer, fileLen);
+        ReadBytes(buffer.data(), fileLen);
+        outFile.Write(buffer.data(), fileLen);
     }
 
     if (progress)
         progress(arg, total, total);
 
     outFile.Close();
-    delete[] buffer;
 }
 
 void SvodIO::OverWriteFile(string inPath, void (*progress)(void *, DWORD, DWORD), void *arg)
@@ -212,7 +211,7 @@ void SvodIO::OverWriteFile(string inPath, void (*progress)(void *, DWORD, DWORD)
     if ((DWORD)inFile.GetPosition() != fileEntry.size)
         throw string("SVOD: Cannot overWrite file of different length.\n");
 
-    BYTE *buffer = new BYTE[0x10000];
+    std::vector<BYTE> buffer(0x10000);
     DWORD fileLen = fileEntry.size;
     DWORD total = (fileLen + 0xFFFF) / 0x10000;
     DWORD cur = 0;
@@ -222,8 +221,8 @@ void SvodIO::OverWriteFile(string inPath, void (*progress)(void *, DWORD, DWORD)
 
     while (fileLen >= 0x10000)
     {
-        inFile.ReadBytes(buffer, 0x10000);
-        WriteBytes(buffer, 0x10000);
+        inFile.ReadBytes(buffer.data(), 0x10000);
+        WriteBytes(buffer.data(), 0x10000);
         fileLen -= 0x10000;
 
         if (progress)
@@ -232,15 +231,14 @@ void SvodIO::OverWriteFile(string inPath, void (*progress)(void *, DWORD, DWORD)
 
     if (fileLen != 0)
     {
-        inFile.ReadBytes(buffer, fileLen);
-        WriteBytes(buffer, fileLen);
+        inFile.ReadBytes(buffer.data(), fileLen);
+        WriteBytes(buffer.data(), fileLen);
     }
 
     if (progress)
         progress(arg, total, total);
 
     inFile.Close();
-    delete[] buffer;
 }
 
 void SvodIO::Close()

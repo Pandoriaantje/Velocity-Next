@@ -1,19 +1,19 @@
 #include <XboxInternals/Fatx/XContentDeviceItem.h>
 
 XContentDeviceItem::XContentDeviceItem() :
-    content(NULL)
+    content()
 {
 
 }
 
-XContentDeviceItem::XContentDeviceItem(FatxFileEntry *fileEntry, IXContentHeader *content, std::vector<std::string> contentFilePaths) :
-    content(content), pathOnDevice(fileEntry->path + fileEntry->name), rawName(fileEntry->name), fileSize(fileEntry->fileSize), contentFilePaths(contentFilePaths)
+XContentDeviceItem::XContentDeviceItem(FatxFileEntry *fileEntry, std::shared_ptr<IXContentHeader> content, std::vector<std::string> contentFilePaths) :
+    content(std::move(content)), pathOnDevice(fileEntry->path + fileEntry->name), rawName(fileEntry->name), fileSize(fileEntry->fileSize), contentFilePaths(contentFilePaths)
 {
 
 }
 
-XContentDeviceItem::XContentDeviceItem(std::string pathOnDevice, std::string rawName, IXContentHeader *content, UINT64 fileSize, std::vector<std::string> contentFilePaths) :
-    content(content), pathOnDevice(pathOnDevice), rawName(rawName), fileSize(fileSize), contentFilePaths(contentFilePaths)
+XContentDeviceItem::XContentDeviceItem(std::string pathOnDevice, std::string rawName, std::shared_ptr<IXContentHeader> content, UINT64 fileSize, std::vector<std::string> contentFilePaths) :
+    content(std::move(content)), pathOnDevice(pathOnDevice), rawName(rawName), fileSize(fileSize), contentFilePaths(contentFilePaths)
 {
 
 }
@@ -25,7 +25,7 @@ std::string XContentDeviceItem::GetPathOnDevice()
 
 std::wstring XContentDeviceItem::GetName()
 {
-    if (content == NULL)
+    if (!content)
         return L"";
 
     return content->metaData->displayName;
@@ -33,14 +33,14 @@ std::wstring XContentDeviceItem::GetName()
 
 BYTE *XContentDeviceItem::GetThumbnail()
 {
-    if (content == NULL)
-        return NULL;
-    return content->metaData->thumbnailImage.empty() ? NULL : content->metaData->thumbnailImage.data();
+    if (!content)
+        return nullptr;
+    return content->metaData->thumbnailImage.empty() ? nullptr : content->metaData->thumbnailImage.data();
 }
 
 DWORD XContentDeviceItem::GetThumbnailSize()
 {
-    if (content == NULL)
+    if (!content)
         return 0;
     return content->metaData->thumbnailImageSize;
 }
@@ -52,15 +52,15 @@ std::string XContentDeviceItem::GetRawName()
 
 BYTE *XContentDeviceItem::GetProfileID()
 {
-    if (content == NULL)
-        return NULL;
+    if (!content)
+        return nullptr;
     return content->metaData->profileID;
 }
 
 UINT64 XContentDeviceItem::GetFileSize()
 {
     UINT64 toReturn = fileSize;
-    if (content != NULL)
+    if (content)
         toReturn += content->metaData->dataFileCombinedSize;
     return toReturn;
 }

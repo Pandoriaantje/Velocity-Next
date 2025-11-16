@@ -4,8 +4,10 @@
 #ifndef MULTIFILEIO_H
 #define MULTIFILEIO_H
 
-#include <XboxInternals/IO/FileIO.h>
+#include <memory>
 #include <vector>
+
+#include <XboxInternals/IO/FileIO.h>
 
 class XBOXINTERNALS_EXPORT MultiFileIO : public BaseIO
 {
@@ -39,7 +41,7 @@ private:
     UINT64 pos, lengthOfFiles;
     bool isClosed;
     DWORD currentIOIndex;
-    std::vector<BaseIO*> files;
+    std::vector<std::unique_ptr<BaseIO>> files;
 
     void calculateLengthOfAllFiles();
 };

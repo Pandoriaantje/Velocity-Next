@@ -1,22 +1,23 @@
 #include <XboxInternals/Xex/Xuiz.h>
 
-Xuiz::Xuiz(std::string filePath) :
-    freeIO(true)
+#include <memory>
+
+Xuiz::Xuiz(std::string filePath)
 {
-    io = new FileIO(filePath);
+    ownedIO = std::make_unique<FileIO>(filePath);
+    io = ownedIO.get();
     Parse();
 }
 
 Xuiz::Xuiz(BaseIO *io) :
-    io(io), freeIO(false)
+    io(io)
 {
     Parse();
 }
 
 Xuiz::~Xuiz()
 {
-    if (freeIO)
-        delete io;
+    ownedIO.reset();
 }
 
 std::vector<XuizFileEntry> Xuiz::GetFiles() const

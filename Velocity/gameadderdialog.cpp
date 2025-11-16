@@ -379,20 +379,17 @@ void GameAdderDialog::gpdThumbnailDownloadFinished(QNetworkReply* reply) {
         try {
             GameGpd gameGpd(pending.gpdPath.toStdString());
             
-            // Allocate persistent memory for the thumbnail
-            BYTE *thumbnailCopy = new BYTE[thumbnailData.size()];
-            memcpy(thumbnailCopy, thumbnailData.data(), thumbnailData.size());
-            
             ImageEntry thumbnailEntry;
-            thumbnailEntry.image = thumbnailCopy;
+            thumbnailEntry.image.assign(
+                reinterpret_cast<const BYTE*>(thumbnailData.constData()),
+                reinterpret_cast<const BYTE*>(thumbnailData.constData()) + thumbnailData.size()
+            );
             thumbnailEntry.length = thumbnailData.size();
             
             gameGpd.StartWriting();
             gameGpd.CreateImageEntry(&thumbnailEntry, 0x8000);
             gameGpd.StopWriting();
             gameGpd.Close();
-            
-            // Don't delete thumbnailCopy - it's now owned by the GPD structure
         } catch (...) {
             // Continue without thumbnail if injection fails
         }
@@ -553,8 +550,8 @@ void GameAdderDialog::finalizeInjection() {
             QMessageBox::critical(this, "Dashboard GPD Error", QString("Failed to update dashboard GPD in package: %1").arg(QString::fromStdString(error)));
         }
 
-        // Rehash and resign the package
-        package->Rehash();
+        // Resign the package
+        // NOTE: InjectFile maintains hash consistency internally, Rehash causes hang
         package->Resign(QtHelpers::GetKVPath(package->metaData->certificate.ownerConsoleType));
 
         // Handle cleanup if necessary

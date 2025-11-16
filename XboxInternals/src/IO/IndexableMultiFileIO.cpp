@@ -29,8 +29,7 @@ void IndexableMultiFileIO::SetPosition(DWORD newAddressInFile, int desiredFileIn
 
     if (currentIO != nullptr) {
         currentIO->Close();
-        delete currentIO;
-        currentIO = nullptr;
+        currentIO.reset();
     }
 
     currentIO = openFile(files.at(static_cast<size_t>(desiredFileIndex)));

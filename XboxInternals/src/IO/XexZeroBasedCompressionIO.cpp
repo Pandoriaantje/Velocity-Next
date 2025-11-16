@@ -1,6 +1,7 @@
 #include <XboxInternals/IO/XexZeroBasedCompressionIO.h>
 #include <XboxInternals/Xex/Xex.h>
 
+#include <array>
 #include <cstring>
 
 XexZeroBasedCompressionIO::XexZeroBasedCompressionIO(BaseIO *io, Xex *xex) :
@@ -84,8 +85,7 @@ void XexZeroBasedCompressionIO::ReadBytes(BYTE *outBuffer, DWORD readLength)
                 nullBytesToCopy = bytesRemaining;
 
             // allocate a null buffer
-            BYTE *nullBuffer = new BYTE[XEX_NULL_BUFFER_SIZE];
-            memset(nullBuffer, 0, XEX_NULL_BUFFER_SIZE);
+            std::array<BYTE, XEX_NULL_BUFFER_SIZE> nullBuffer {};
 
             // calculate the number of copies to do
             DWORD copyIterations = nullBytesToCopy / XEX_NULL_BUFFER_SIZE;
@@ -100,12 +100,11 @@ void XexZeroBasedCompressionIO::ReadBytes(BYTE *outBuffer, DWORD readLength)
                 if (i + 1 == copyIterations && nullBytesToCopy % XEX_NULL_BUFFER_SIZE != 0)
                     bytesToCopy = nullBytesToCopy % XEX_NULL_BUFFER_SIZE;
 
-                memcpy(outBuffer + (readLength - bytesRemaining), nullBuffer, bytesToCopy);
+                memcpy(outBuffer + (readLength - bytesRemaining), nullBuffer.data(), bytesToCopy);
                 bytesRemaining -= bytesToCopy;
             }
 
             position += nullBytesToCopy;
-            delete nullBuffer;
         }
     }
 }

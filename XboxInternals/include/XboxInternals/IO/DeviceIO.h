@@ -6,6 +6,8 @@
 
 #define FAT_SECTOR_SIZE 0x200
 
+#include <memory>
+
 #include <XboxInternals/IO/BaseIO.h>
 #include "../Fatx/FatxHelpers.h"
 #include <XboxInternals/Export.h>
@@ -38,7 +40,7 @@ private:
     UINT64 realPosition();
 
     class Impl;
-    Impl* impl;
+    std::unique_ptr<Impl> impl;
 
     std::string yolo;
 

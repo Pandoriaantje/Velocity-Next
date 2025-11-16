@@ -1,9 +1,10 @@
 #pragma once
 
-#include <iostream>
-#include <fstream>
-#include <string.h>
 #include <errno.h>
+#include <fstream>
+#include <iostream>
+#include <memory>
+#include <string.h>
 #include <XboxInternals/TypeDefinitions.h>
 #include <XboxInternals/IO/BaseIO.h>
 
@@ -16,7 +17,7 @@ using std::ios_base;
 class XBOXINTERNALS_EXPORT FileIO : public BaseIO
 {
 public:
-    FileIO(string path, bool truncate = false, bool readOnly = false);
+    FileIO(string path, bool truncate = false);
     void SetPosition(UINT64 pos, ios_base::seekdir dir = ios_base::beg);
     UINT64 GetPosition();
     UINT64 Length();
@@ -35,7 +36,7 @@ private:
     EndianType endian;
     UINT64 length;
     void ReadBytesWithChecks(void *buffer, INT32 size);
-    fstream *fstr;
+    std::unique_ptr<fstream> fstr;
     const string filePath;
 };
 

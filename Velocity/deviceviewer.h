@@ -36,6 +36,8 @@
 #include "nightcharts.h"
 #include "dragdroptreewidget.h"
 
+#include <memory>
+
 Q_DECLARE_METATYPE(FatxFileEntry*)
 Q_DECLARE_METATYPE(FatxDrive*)
 Q_DECLARE_METATYPE(Partition*)
@@ -79,7 +81,7 @@ private slots:
 
 private:
     Ui::DeviceViewer *ui;
-    std::vector<FatxDrive*> loadedDrives;
+    std::vector<std::unique_ptr<FatxDrive>> loadedDrives;
     FatxDrive *currentDrive;
     FatxFileEntry *parentEntry;
     QList<FatxFileEntry*> directoryChain;

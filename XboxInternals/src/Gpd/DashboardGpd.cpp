@@ -17,6 +17,7 @@ DashboardGpd::DashboardGpd(FileIO *io) : GpdBase(io)
 void DashboardGpd::CleanGpd()
 {
     xdbf->Clean();
+    io = xdbf->io;
 }
 
 void DashboardGpd::init()

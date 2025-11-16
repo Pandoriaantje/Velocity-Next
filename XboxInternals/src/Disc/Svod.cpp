@@ -32,7 +32,7 @@ std::vector<std::string> SVOD::GetDataFilePaths(const std::string &rootDescripto
 }
 
 SVOD::SVOD(string rootPath, FatxDrive *drive, bool readFileListing)
-    : io(nullptr), rootFile(nullptr), baseAddress(0), offset(0), drive(drive), didReadFileListing(false)
+    : baseAddress(0), offset(0), drive(drive), didReadFileListing(false)
 {
     rootPath = Utils::NormalizeFilePath(rootPath, '\\', '/');
 
@@ -41,16 +41,17 @@ SVOD::SVOD(string rootPath, FatxDrive *drive, bool readFileListing)
 
     if (drive == nullptr)
     {
-        rootFile = new FileIO(Utils::NormalizeFilePath(rootPath));
+        rootFile = std::make_unique<FileIO>(Utils::NormalizeFilePath(rootPath));
     }
     else
     {
         std::string fatxPath = Utils::NormalizeFilePath(rootPath);
         FatxFileEntry *rootFileEntry = drive->GetFileEntry(fatxPath);
-        rootFile = new FatxIO(drive->GetFatxIO(rootFileEntry));
+        rootFile = std::make_unique<FatxIO>(drive->GetFatxIO(rootFileEntry));
     }
 
-    metaData = new XContentHeader(rootFile);
+    metaDataOwner = std::make_unique<XContentHeader>(rootFile.get());
+    metaData = metaDataOwner.get();
 
     baseAddress = (metaData->svodVolumeDescriptor.flags & EnhancedGDFLayout) ? 0x2000 : 0x12000;
     offset = (metaData->svodVolumeDescriptor.flags & EnhancedGDFLayout) ? 0x2000 : 0x1000;
@@ -71,16 +72,16 @@ SVOD::SVOD(string rootPath, FatxDrive *drive, bool readFileListing)
     if (drive == nullptr)
     {
         std::string normalizedDirectory = Utils::NormalizeFilePath(contentDirectory);
-        io = new LocalIndexableMultiFileIO(std::move(normalizedDirectory));
+        io = std::make_unique<LocalIndexableMultiFileIO>(std::move(normalizedDirectory));
     }
     else
     {
         std::string fatxDataDirectory = Utils::NormalizeFilePath(contentDirectory);
-        io = new FatxIndexableMultiFileIO(fatxDataDirectory, drive);
+        io = std::make_unique<FatxIndexableMultiFileIO>(fatxDataDirectory, drive);
     }
 
     io->SetPosition(baseAddress, 0);
-    GdfxReadHeader(io, &header);
+    GdfxReadHeader(io.get(), &header);
 
     if (readFileListing)
         GetFileListing();
@@ -91,19 +92,12 @@ SVOD::~SVOD()
     if (io)
     {
         io->Close();
-        delete io;
-        io = nullptr;
     }
 
     if (rootFile)
     {
         rootFile->Close();
-        delete rootFile;
-        rootFile = nullptr;
     }
-
-    delete metaData;
-    metaData = nullptr;
 }
 
 void SVOD::Resign(string kvPath)
@@ -135,7 +129,7 @@ void SVOD::ReadFileListing(vector<GdfxFileEntry> *entryList, DWORD sector, int s
     {
         io->GetPosition(&current.address, &current.fileIndex);
 
-        if (!GdfxReadFileEntry(io, &current) && size != 0)
+        if (!GdfxReadFileEntry(io.get(), &current) && size != 0)
             break;
 
         if (current.attributes & GdfxDirectory)
@@ -203,7 +197,7 @@ SvodIO SVOD::GetSvodIO(string path)
 
 SvodIO SVOD::GetSvodIO(GdfxFileEntry entry)
 {
-    return SvodIO(metaData, std::move(entry), io);
+    return SvodIO(metaData, std::move(entry), io.get());
 }
 
 void SVOD::Rehash(void (*progress)(DWORD, DWORD, void*), void *arg)
@@ -280,7 +274,7 @@ void SVOD::HashBlock(BYTE *block, BYTE *outHash)
 void SVOD::WriteFileEntry(GdfxFileEntry *entry)
 {
     io->SetPosition(entry->address, static_cast<int>(entry->fileIndex));
-    GdfxWriteFileEntry(io, entry);
+    GdfxWriteFileEntry(io.get(), entry);
 }
 
 DWORD SVOD::GetSectorCount()

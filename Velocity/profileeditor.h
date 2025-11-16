@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QMessageBox>
+#include <QCloseEvent>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkReply>
@@ -289,6 +290,11 @@ private:
 
     QString v1TempPath, v2TempPath;
     QString assetSavePath;
+
+    GameEntry *gameEntry(int index);
+    const GameEntry *gameEntry(int index) const;
+    AvatarAwardGameEntry *avatarAwardEntry(int index);
+    const AvatarAwardGameEntry *avatarAwardEntry(int index) const;
 
     void addToDashGpd(SettingEntry *entry, SettingEntryType type, UINT64 id);
     void updateAvatarAward(TitleEntry *entry, AvatarAwardGpd *gpd, AvatarAwardData *award,

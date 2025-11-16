@@ -2,6 +2,7 @@
 #define XCONTENTDEVICEITEM_H
 
 #include <iostream>
+#include <memory>
 #include <XboxInternals/Stfs/IXContentHeader.h>
 #include <XboxInternals/Fatx/FatxDrive.h>
 #include <XboxInternals/Export.h>
@@ -10,10 +11,10 @@ class XBOXINTERNALSSHARED_EXPORT XContentDeviceItem
 {
 public:
     XContentDeviceItem();
-    XContentDeviceItem(FatxFileEntry *fileEntry, IXContentHeader *content, std::vector<std::string> contentFilePaths=std::vector<std::string>());
-    XContentDeviceItem(std::string pathOnDevice, std::string rawName, IXContentHeader *content, UINT64 fileSize = 0, std::vector<std::string> contentFilePaths=std::vector<std::string>());
+    XContentDeviceItem(FatxFileEntry *fileEntry, std::shared_ptr<IXContentHeader> content, std::vector<std::string> contentFilePaths=std::vector<std::string>());
+    XContentDeviceItem(std::string pathOnDevice, std::string rawName, std::shared_ptr<IXContentHeader> content, UINT64 fileSize = 0, std::vector<std::string> contentFilePaths=std::vector<std::string>());
 
-    IXContentHeader *content;
+    std::shared_ptr<IXContentHeader> content;
 
     virtual std::string GetPathOnDevice();
     virtual std::wstring GetName();

@@ -11,6 +11,7 @@
 #include <XboxInternals/Xex/XexDefinitions.h>
 #include <XboxInternals/Export.h>
 
+#include <memory>
 #include <string>
 
 #include <botan_all.h>
@@ -111,13 +112,13 @@ public:
     std::string GetCompressionStateStr() const;
 
 private:
-    bool deleteIO;
     BaseIO *io;
+    std::unique_ptr<BaseIO> ownedIO;
     XexHeader header;
     DWORD pageSize;
     DWORD firstResourceFileAddr;
 
-    FileIO *rawDataIO;
+    std::unique_ptr<FileIO> rawDataIO;
     std::string rawDataPath;
 
     std::vector<XexOptionalHeaderEntry> optionalHeaderData;

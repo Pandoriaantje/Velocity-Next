@@ -16,7 +16,7 @@ public:
     GameGpd(string gpdPath);
     GameGpd(FileIO *io);
 
-    ~GameGpd(void);
+    ~GameGpd(void) override = default;
 
     // Description: all of the achievements in this gpd
     vector<AchievementEntry> achievements;

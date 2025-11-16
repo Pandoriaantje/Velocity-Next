@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ios>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -39,9 +40,9 @@ protected:
     DWORD addressInFile;
     DWORD fileIndex;
 
-    BaseIO *currentIO;
+    std::unique_ptr<BaseIO> currentIO;
     std::vector<std::string> files;
 
     virtual void loadDirectories(std::string path) = 0;
-    virtual BaseIO* openFile(std::string path) = 0;
+    virtual std::unique_ptr<BaseIO> openFile(std::string path) = 0;
 };

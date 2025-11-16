@@ -1,12 +1,13 @@
 #pragma once
 
 #include <iostream>
-#include <vector>
-#include <sstream>
-#include <math.h>
 #include <map>
-#include <time.h>
+#include <math.h>
+#include <memory>
+#include <sstream>
 #include <stdlib.h>
+#include <time.h>
+#include <vector>
 #include <XboxInternals/IO/FileIO.h>
 #include <XboxInternals/Stfs/IXContentHeader.h>
 
@@ -106,6 +107,9 @@ public:
     // Description: fix all the hashes used in the file
     void Rehash();
 
+    // Description: reload the top hash table from disk after Rehash/Resign operations
+    void ReloadHashTable();
+
     // Description: resign the file
     void Resign(string kvPath);
 
@@ -155,14 +159,18 @@ public:
         // Description: builds a block chain for the given entry
         void GenerateBlockChain(StfsFileEntry *entry, bool forceRefresh = false);
 
+        // Description: clears all cached block chains, forcing regeneration on next access
+        void ClearCachedBlockChains();
+
     ~StfsPackage(void);
 private:
     StfsFileListing fileListing;
     StfsFileListing writtenToFile;
 
-    BaseIO *io;
+        BaseIO *io;
+        std::unique_ptr<BaseIO> ownedIO;
+        std::unique_ptr<XContentHeader> metaDataOwner;
     stringstream except;
-    bool ioPassedIn;
 
     Sex packageSex;
     DWORD blockStep[2];

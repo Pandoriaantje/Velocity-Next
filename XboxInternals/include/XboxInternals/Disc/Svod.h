@@ -39,8 +39,9 @@ private:
     std::string GetContentName();
 
     std::string contentDirectory;
-    IndexableMultiFileIO *io;
-    BaseIO *rootFile;
+    std::unique_ptr<IndexableMultiFileIO> io;
+    std::unique_ptr<BaseIO> rootFile;
+    std::unique_ptr<XContentHeader> metaDataOwner;
     GdfxHeader header;
     DWORD baseAddress;
     DWORD offset;

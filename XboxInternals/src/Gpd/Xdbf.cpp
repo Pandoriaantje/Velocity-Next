@@ -2,18 +2,13 @@
 #include <stdio.h>
 #include <filesystem>
 #include <random>
+#include <utility>
 
-Xdbf::Xdbf(string gpdPath) : ioPassedIn(false)
+Xdbf::Xdbf(const string &gpdPath) : Xdbf(std::make_shared<FileIO>(gpdPath))
 {
-    io = new FileIO(gpdPath);
-
-    init();
-    readHeader();
-    readEntryTable();
-    readFreeMemoryTable();
 }
 
-Xdbf::Xdbf(FileIO *io) : io(io), ioPassedIn(true)
+Xdbf::Xdbf(shared_ptr<FileIO> io) : io(std::move(io))
 {
     init();
     readHeader();
@@ -73,15 +68,15 @@ void Xdbf::Clean()
     tempFile.Close();
     io->Close();
 
+    const string originalPath = io->GetFilePath();
+
     // delete the original file
-    remove(io->GetFilePath().c_str());
+    remove(originalPath.c_str());
 
     // move the temp file to the old file's location
-    rename(tempFileName.c_str(), io->GetFilePath().c_str());
+    rename(tempFileName.c_str(), originalPath.c_str());
 
-    string path = io->GetFilePath();
-    delete io;
-    io = new FileIO(path);
+    io = std::make_shared<FileIO>(originalPath);
 
     // Write the updated entry table
     WriteEntryListing();
@@ -113,7 +108,7 @@ void Xdbf::WriteNewEntryGroup(XdbfEntryGroup *group, FileIO *newIO)
     for (DWORD i = 0; i < group->entries.size(); i++)
         WriteNewEntry(&group->entries.at(i), newIO);
 
-    // Write the sync crap
+    // Write synchronization data
     WriteNewEntry(&group->syncs.entry, newIO);
     WriteNewEntry(&group->syncData.entry, newIO);
 }
@@ -128,17 +123,15 @@ void Xdbf::WriteNewEntryGroup(vector<XdbfEntry> *group, FileIO *newIO)
 void Xdbf::WriteNewEntry(XdbfEntry *entry, FileIO *newIO)
 {
     // read in the entry data
-    BYTE *buffer = new BYTE[entry->length];
+    std::vector<BYTE> buffer(entry->length);
     io->SetPosition(GetRealAddress(entry->addressSpecifier));
-    io->ReadBytes(buffer, entry->length);
+    io->ReadBytes(buffer.data(), entry->length);
 
     // update the entry address
     entry->addressSpecifier = GetSpecifier((DWORD)newIO->GetPosition());
 
     // Write the entry data
-    newIO->Write(buffer, entry->length);
-
-    delete[] buffer;
+    newIO->Write(buffer.data(), entry->length);
 }
 
 void Xdbf::init()
@@ -157,12 +150,6 @@ void Xdbf::init()
     memset(&settings.syncData.entry, 0, sizeof(XdbfEntry));
     memset(&titlesPlayed.syncData.entry, 0, sizeof(XdbfEntry));
     memset(&avatarAwards.syncData.entry, 0, sizeof(XdbfEntry));
-}
-
-Xdbf::~Xdbf()
-{
-    if (!ioPassedIn)
-        io->Close();
 }
 
 void Xdbf::readHeader()
@@ -484,7 +471,7 @@ DWORD Xdbf::AllocateMemory(DWORD size)
 
     DWORD toReturn;
 
-    // first checek and see if we can allocate some of the memory in the free memory table
+    // first check and see if we can allocate some of the memory in the free memory table
     size_t index = 0;
     for (; index < freeMemory.size() - 1; index++)
     {

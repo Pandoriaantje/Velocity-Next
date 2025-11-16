@@ -1,6 +1,7 @@
 #include <XboxInternals/IO/LocalIndexableMultiFileIO.h>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #include <XboxInternals/IO/FileIO.h>
@@ -14,15 +15,13 @@ LocalIndexableMultiFileIO::LocalIndexableMultiFileIO(std::string fileDirectory)
         throw std::string("MultiFileIO: Directory is empty\n");
     }
 
-    currentIO = new FileIO(files.front());
+    currentIO = std::make_unique<FileIO>(files.front());
 }
 
 LocalIndexableMultiFileIO::~LocalIndexableMultiFileIO()
 {
     if (currentIO) {
         currentIO->Close();
-        delete currentIO;
-        currentIO = nullptr;
     }
 }
 
@@ -32,7 +31,7 @@ void LocalIndexableMultiFileIO::loadDirectories(std::string path)
     std::sort(files.begin(), files.end());
 }
 
-BaseIO* LocalIndexableMultiFileIO::openFile(std::string path)
+std::unique_ptr<BaseIO> LocalIndexableMultiFileIO::openFile(std::string path)
 {
-    return new FileIO(std::move(path));
+    return std::make_unique<FileIO>(std::move(path));
 }

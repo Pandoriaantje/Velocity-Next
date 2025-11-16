@@ -32,11 +32,11 @@ public:
     void ReadBlockData(STRBBlock *block);
 
 private:
+    std::unique_ptr<FileIO> ioOwned;
     FileIO *io;
-    bool ioPassedIn;
     STRBHeader header;
     AssetMetadata metadata;
-    struct Animation animation; // TODO: read this crap in
+    struct Animation animation; // TODO: Parse animation data
     ColorTable customColors;
 
     // Description: read the STRB header

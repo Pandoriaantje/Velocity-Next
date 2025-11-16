@@ -22,8 +22,7 @@ namespace XboxInternals::Iso {
 
 struct IsoImage::Impl {
     std::string path;
-    BaseIO *io = nullptr;
-    bool freeIO = true;
+    std::unique_ptr<BaseIO> io;
 };
 
 IsoImage::IsoImage() : impl_(new Impl()), didReadFileListing(false), gdfxHeaderAddress(0), 
@@ -67,7 +66,7 @@ void IsoImage::ParseISO() {
     
     // Parse the GDFX header using unified functions
     impl_->io->SetPosition(gdfxHeaderAddress);
-    GdfxReadHeader(impl_->io, &gdfxHeader);
+    GdfxReadHeader(impl_->io.get(), &gdfxHeader);
     
     info_.rootDirSector = gdfxHeader.rootSector;
     info_.rootDirSize = gdfxHeader.rootSize;
@@ -86,7 +85,7 @@ void IsoImage::ReadFileListing(std::vector<GdfxFileEntry> *entryList, DWORD sect
         UINT64 currentAddress = impl_->io->GetPosition();
         
         // Use unified GDFX reading function
-        if (!GdfxReadFileEntry(impl_->io, &current))
+        if (!GdfxReadFileEntry(impl_->io.get(), &current))
             break;
         
         // If it's a non-empty directory, recursively read its contents
@@ -196,11 +195,11 @@ GdfxFileEntry* IsoImage::GetFileEntry(std::string filePath) {
 }
 
 IsoIO* IsoImage::GetIO(std::string filePath) {
-    return new IsoIO(impl_->io, filePath, this);
+    return new IsoIO(impl_->io.get(), filePath, this);
 }
 
 IsoIO* IsoImage::GetIO(GdfxFileEntry *entry) {
-    return new IsoIO(impl_->io, entry, this);
+    return new IsoIO(impl_->io.get(), entry, this);
 }
 
 std::string IsoImage::GetXGDVersion() {
@@ -280,8 +279,7 @@ bool IsoImage::open(const std::string& path) {
     impl_->path = path;
     
     try {
-        impl_->io = new FileIO(path, false, true);
-        impl_->freeIO = true;
+        impl_->io = std::make_unique<FileIO>(path, false);
         
         info_.imageSize = impl_->io->Length();
         info_.sectorSize = ISO_SECTOR_SIZE;
@@ -305,10 +303,7 @@ bool IsoImage::open(const std::string& path) {
 }
 
 void IsoImage::close() {
-    if (impl_->io && impl_->freeIO) {
-        delete impl_->io;
-    }
-    impl_->io = nullptr;
+    impl_->io.reset();
     impl_->path.clear();
     root.clear();
     didReadFileListing = false;

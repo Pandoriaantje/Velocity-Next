@@ -2,16 +2,17 @@
 #include <XboxInternals/IO/XexZeroBasedCompressionIO.h>
 #include <XboxInternals/IO/XexAesIO.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
+#include <memory>
 #include <vector>
-#include <algorithm>
 
 namespace fs = std::filesystem;
 
 Xex::Xex(BaseIO *io) :
-    deleteIO(false), io(io), firstResourceFileAddr(0xFFFFFFFF), rawDataIO(NULL), imageBaseAddress(0),
+    io(io), firstResourceFileAddr(0xFFFFFFFF), imageBaseAddress(0),
     entryPoint(0), originalBaseAddress(0), defaultStackSize(0), defaultFileSystemCacheSize(0),
     defaultHeapSize(0), titleWorkspaceSize(0), esrbRating(ESRB_RP), pegiRating(PEGI_Unrated),
     pegifiRating(PEGIFI_Unrated), pegiptRating(PEGIPT_Unrated), pegibbfcRating(PEGIBBF_Unrated),
@@ -22,25 +23,21 @@ Xex::Xex(BaseIO *io) :
 }
 
 Xex::Xex(std::string fileName) :
-    deleteIO(true), firstResourceFileAddr(0xFFFFFFFF), rawDataIO(NULL), imageBaseAddress(0),
+    io(nullptr), ownedIO(std::make_unique<FileIO>(fileName)), firstResourceFileAddr(0xFFFFFFFF), imageBaseAddress(0),
     entryPoint(0), originalBaseAddress(0), defaultStackSize(0), defaultFileSystemCacheSize(0),
     defaultHeapSize(0), titleWorkspaceSize(0), esrbRating(ESRB_RP), pegiRating(PEGI_Unrated),
     pegifiRating(PEGIFI_Unrated), pegiptRating(PEGIPT_Unrated), pegibbfcRating(PEGIBBF_Unrated),
     oflcAURating(OFLCAU_UNRATED), oflcNZRating(OFLCNZ_UNRATED),
     encrypted(false), encryptionState(Decrypted), compressionState(XexDecompressed)
 {
-    io = new FileIO(fileName);
+    io = ownedIO.get();
 
     Parse();
 }
 
 Xex::~Xex()
 {
-    if (deleteIO)
-        delete io;
-
-    if (rawDataIO)
-        delete rawDataIO;
+    rawDataIO.reset();
 
     if (!rawDataPath.empty())
         std::remove(rawDataPath.c_str());
@@ -356,13 +353,22 @@ void Xex::ExtractData2(std::string path)
     BaseIO *plaintextDataIO = io;
     plaintextDataIO->SetPosition(header.dataAddress);
 
+    std::unique_ptr<BaseIO> aesIO;
+    std::unique_ptr<BaseIO> decompressedIO;
+
     // check to see if it needs be to decrypted
     if (GetEncryptionState() == RetailEncrypted || GetEncryptionState() == DevKitEncrypted)
-        plaintextDataIO = new XexAesIO(plaintextDataIO, this, decryptedKey);
+    {
+        aesIO = std::make_unique<XexAesIO>(plaintextDataIO, this, decryptedKey);
+        plaintextDataIO = aesIO.get();
+    }
 
     // check to see if it needs to be zero decompressed
-    if (compressionBlocks.size() != 0)
-        plaintextDataIO = new XexZeroBasedCompressionIO(plaintextDataIO, this);
+    if (!compressionBlocks.empty())
+    {
+        decompressedIO = std::make_unique<XexZeroBasedCompressionIO>(plaintextDataIO, this);
+        plaintextDataIO = decompressedIO.get();
+    }
 
     // calculate the total data size
     DWORD dataSize;
@@ -400,9 +406,7 @@ void Xex::ExtractData2(std::string path)
     outFile.Write(copyBuffer.data(), bytesToCopy);
     }
 
-    // cleanup
-    if (plaintextDataIO != io)
-        delete plaintextDataIO;
+    // cleanup handled by unique_ptr wrappers
 }
 
 bool Xex::HasRegion(XexRegion region)
@@ -857,13 +861,12 @@ bool Xex::TryKey(const BYTE *key)
 
     WORD magic = peIO.ReadWord();
     
-    // Debug output
+    // Log diagnostic information if magic number validation fails
     if (magic != 0x4D5A) {
         char msg[256];
         snprintf(msg, sizeof(msg), "TryKey: magic=0x%04X (expected 0x4D5A). First 4 decrypted bytes: %02X %02X %02X %02X. Encrypted bytes: %02X %02X %02X %02X",
                  magic, decryptedBuffer[0], decryptedBuffer[1], decryptedBuffer[2], decryptedBuffer[3],
                  encryptedBuffer[0], encryptedBuffer[1], encryptedBuffer[2], encryptedBuffer[3]);
-        // This debug message helps - don't remove yet
     }
     
     return (magic == 0x4D5A); 	// 'MZ'
@@ -880,10 +883,10 @@ BaseIO *Xex::GetRawDataIO()
     else
     {
         // check to see if a rawDataIO already exists
-        if (rawDataIO != NULL)
+        if (rawDataIO)
         {
             rawDataIO->SetPosition(0);
-            return rawDataIO;
+            return rawDataIO.get();
         }
 
         // create a temporary file with the cleaned data
@@ -891,7 +894,7 @@ BaseIO *Xex::GetRawDataIO()
         rawDataPath = tempPath.string();
         ExtractData(rawDataPath);
 
-        rawDataIO = new FileIO(rawDataPath);
-        return rawDataIO;
+        rawDataIO = std::make_unique<FileIO>(rawDataPath);
+        return rawDataIO.get();
     }
 }

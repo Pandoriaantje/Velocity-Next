@@ -428,13 +428,13 @@ void IsoDialog::onItemDoubleClicked(QTreeWidgetItem* item, int column) {
                     return;
                 }
                 
-                StfsPackage* package = new StfsPackage(io);
+                auto package = std::unique_ptr<StfsPackage>(new StfsPackage(io));
                 
                 // Create empty action lists for PackageViewer
                 QList<QAction*> gpdActions;
                 QList<QAction*> gameActions;
                 
-                PackageViewer* viewer = new PackageViewer(statusBar_, package, gpdActions, gameActions, this, true);
+                PackageViewer* viewer = new PackageViewer(statusBar_, package.release(), gpdActions, gameActions, this);
                 viewer->setAttribute(Qt::WA_DeleteOnClose);
                 viewer->show();
             } catch (const std::exception& e) {

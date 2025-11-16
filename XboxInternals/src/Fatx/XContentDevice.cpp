@@ -1,51 +1,49 @@
 #include <XboxInternals/Fatx/XContentDevice.h>
 
+#include <filesystem>
 #include <memory>
 
 XContentDevice::XContentDevice(FatxDrive *drive) :
-    drive(drive), content(NULL)
+    drive(drive), content(nullptr)
 {
-    profiles = new std::vector<XContentDeviceProfile>();
+    profiles = std::make_unique<std::vector<XContentDeviceProfile>>();
 
-    games = new std::vector<XContentDeviceSharedItem>();
-    dlc = new std::vector<XContentDeviceSharedItem>();
-    demos = new std::vector<XContentDeviceSharedItem>();
-    videos = new std::vector<XContentDeviceSharedItem>();
-    themes = new std::vector<XContentDeviceSharedItem>();
-    gamerPictures = new std::vector<XContentDeviceSharedItem>();
-    avatarItems = new std::vector<XContentDeviceSharedItem>();
-    updates = new std::vector<XContentDeviceSharedItem>();
-    systemItems = new std::vector<XContentDeviceSharedItem>();
+    games = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    dlc = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    demos = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    videos = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    themes = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    gamerPictures = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    avatarItems = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    updates = std::make_unique<std::vector<XContentDeviceSharedItem>>();
+    systemItems = std::make_unique<std::vector<XContentDeviceSharedItem>>();
 }
-
 XContentDevice::~XContentDevice()
 {
-    for (int i = 0; i < profiles->size(); i++)
+    if (profiles)
     {
-        for (int x = 0; x < profiles->at(i).titles.size(); x++)
-            for (int y = 0; y < profiles->at(i).titles.at(x).titleSaves.size(); y++)
-                delete profiles->at(i).titles.at(x).titleSaves.at(y).content;
-        delete profiles->at(i).content;
+        for (auto &profile : *profiles)
+        {
+            for (auto &title : profile.titles)
+            {
+                for (auto &save : title.titleSaves)
+                {
+                    save.content.reset();
+                }
+            }
+
+            profile.content.reset();
+        }
     }
 
-    CleanupSharedFiles(games);
-    CleanupSharedFiles(dlc);
-    CleanupSharedFiles(videos);
-    CleanupSharedFiles(themes);
-    CleanupSharedFiles(gamerPictures);
-    CleanupSharedFiles(avatarItems);
-    CleanupSharedFiles(updates);
-    CleanupSharedFiles(systemItems);
-
-    delete profiles;
-    delete games;
-    delete dlc;
-    delete videos;
-    delete themes;
-    delete gamerPictures;
-    delete avatarItems;
-    delete updates;
-    delete systemItems;
+    CleanupSharedFiles(games.get());
+    CleanupSharedFiles(dlc.get());
+    CleanupSharedFiles(videos.get());
+    CleanupSharedFiles(themes.get());
+    CleanupSharedFiles(gamerPictures.get());
+    CleanupSharedFiles(avatarItems.get());
+    CleanupSharedFiles(updates.get());
+    CleanupSharedFiles(systemItems.get());
 }
 
 bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
@@ -64,7 +62,7 @@ bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
         }
     }
 
-    if (content == NULL)
+    if (content == nullptr)
     {
         if(progress)
             progress(arg, true);
@@ -74,7 +72,7 @@ bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
     GetFreeMemory(progress, arg, false);
 
     FatxFileEntry *fileEntry = drive->GetFileEntry("Drive:\\Content\\Content\\");
-    if (fileEntry == NULL)
+    if (fileEntry == nullptr)
     {
         // if the content folder doesn't exist, then create i;t
         drive->CreatePath("Drive:\\Content\\Content\\");
@@ -95,32 +93,29 @@ bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
         // all profile folders are named the profile's offline XUID
         if ((profileFolderEntry.fileAttributes & FatxDirectory) == 0 || !ValidOfflineXuid(profileFolderEntry.name) || profileFolderEntry.nameLen == 0xE5)
             continue;
-
         // check for a profile file
         std::string profilePath = "Drive:\\Content\\Content\\" + profileFolderEntry.name + "\\FFFE07D1\\00010000\\" + profileFolderEntry.name;
-        FatxFileEntry* profileEntry = drive->GetFileEntry(profilePath);
 
-        StfsPackage *profilePackage = NULL;
-        std::string rawName = "";
-        if (profileEntry != NULL)
+        FatxFileEntry *profileEntry = drive->GetFileEntry(profilePath);
+        std::shared_ptr<IXContentHeader> profilePackage;
+        if (profileEntry != nullptr)
         {
             try
             {
                 FatxIO io = drive->GetFatxIO(profileEntry);
-                profilePackage = new StfsPackage(new FatxIO(io), StfsPackageDeleteIO);
-                rawName = profileEntry->name;
+                profilePackage = std::make_shared<StfsPackage>(new FatxIO(io), StfsPackageDeleteIO);
             }
             catch (...)
             {
-                profilePath = "";
-                profilePackage = NULL;
+                profilePath.clear();
+                profilePackage.reset();
             }
         }
         else
         {
-            profilePath = "";
+            profilePath.clear();
         }
-        XContentDeviceProfile profile(profilePath, profileFolderEntry.name, profilePackage, (profileEntry != NULL) ? profileEntry->fileSize : 0);
+        XContentDeviceProfile profile(profilePath, profileFolderEntry.name, profilePackage, (profileEntry != nullptr) ? profileEntry->fileSize : 0);
 
         // get all of the game save data for this profile
         drive->GetChildFileEntries(&profileFolderEntry);
@@ -148,13 +143,13 @@ bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
                 progress(arg, false);
         }
 
-        if (profile.titles.size() != 0 || profile.content != NULL)
+        if (!profile.titles.empty() || profile.content)
             profiles->push_back(profile);
     }
 
     // get the shared items folder
     FatxFileEntry *sharedItemsFolder = drive->GetFileEntry("Drive:\\Content\\Content\\0000000000000000");
-    if (sharedItemsFolder == NULL)
+    if (sharedItemsFolder == nullptr)
     {
         if(progress)
             progress(arg, true);
@@ -187,7 +182,7 @@ bool XContentDevice::LoadDevice(void(*progress)(void*, bool), void *arg)
             DWORD rootFileSize = items.at(x).GetFileSize() - items.at(x).content->metaData->dataFileCombinedSize;
             XContentDeviceSharedItem item(items.at(x).GetPathOnDevice(), items.at(x).GetRawName(),
                                           items.at(x).content, rootFileSize, items.at(x).GetContentFilePaths());
-            if (item.content == NULL)
+            if (!item.content)
                 continue;
 
             switch (item.content->metaData->contentType)
@@ -316,29 +311,22 @@ void XContentDevice::CopyFileToDevice(std::string outPath, void (*progress)(void
 
     // if the parent entry doesn't exist, then we need to create it
     FatxFileEntry *parent = drive->GetFileEntry(devicePath);
-    if (parent == NULL)
+    if (parent == nullptr)
         parent = drive->CreatePath(devicePath);
 
-    char *tmp = new char[outPath.size() + 1];
-    memcpy(tmp, outPath.c_str(), outPath.size() + 1);
-#ifdef __WIN32
-    PathStripPathA(tmp);
-    std::string fileName(tmp);
-#else
-    std::string fileName(basename(tmp));
-#endif
-    delete tmp;
+    const std::filesystem::path packagePath(outPath);
+    std::string fileName = packagePath.filename().string();
 
     drive->InjectFile(parent, fileName, outPath, progress, arg);
 
     // open the package on the device
     FatxFileEntry *fileEntry = drive->GetFileEntry(devicePath + fileName);
 
-    IXContentHeader *contentOnDevice;
+    std::shared_ptr<IXContentHeader> contentOnDevice;
     if (fileSystem == FileSystemSTFS)
-        contentOnDevice = new StfsPackage(new FatxIO(drive->GetFatxIO(fileEntry)), StfsPackageDeleteIO);
+        contentOnDevice = std::make_shared<StfsPackage>(new FatxIO(drive->GetFatxIO(fileEntry)), StfsPackageDeleteIO);
     else
-        contentOnDevice = new SVOD(devicePath + fileName, drive, false);
+        contentOnDevice = std::make_shared<SVOD>(devicePath + fileName, drive, false);
 
     BYTE sharedProfileID[8] = { 0 };
 
@@ -394,7 +382,7 @@ void XContentDevice::CopyFileToDevice(std::string outPath, void (*progress)(void
         }
 
         // if the profile doesn't exist, then we need to create another one
-        XContentDeviceProfile profile("Drive:\\Content\\Content\\" + profileID + "\\", profileID, NULL);
+    XContentDeviceProfile profile("Drive:\\Content\\Content\\" + profileID + "\\", profileID, nullptr);
         XContentDeviceTitle title("Drive:\\Content\\Content\\" + profileID + "\\" + titleID + "\\", titleID);
         title.titleSaves.push_back(item);
         profile.titles.push_back(title);
@@ -482,10 +470,10 @@ void XContentDevice::DeleteFile(IXContentHeader *package, std::string pathOnDevi
                     {
                         for (int y = 0; y < profiles->at(i).titles.at(x).titleSaves.size(); y++)
                         {
-                            if (profiles->at(i).titles.at(x).titleSaves.at(y).content == package)
+                            if (profiles->at(i).titles.at(x).titleSaves.at(y).content.get() == package)
                             {
+                                profiles->at(i).titles.at(x).titleSaves.at(y).content.reset();
                                 profiles->at(i).titles.at(x).titleSaves.erase(profiles->at(i).titles.at(x).titleSaves.begin() + y);
-                                delete package;
                             }
                         }
 
@@ -504,7 +492,7 @@ void XContentDevice::DeleteFile(IXContentHeader *package, std::string pathOnDevi
     // file is shared
     else
     {
-        std::vector<XContentDeviceSharedItem> *sharedItemCategory;
+        std::vector<XContentDeviceSharedItem> *sharedItemCategory = nullptr;
         switch (package->metaData->contentType)
         {
             case ArcadeGame:
@@ -514,15 +502,15 @@ void XContentDevice::DeleteFile(IXContentHeader *package, std::string pathOnDevi
             case InstalledGame:
             case XboxOriginalGame:
             case Xbox360Title:
-                sharedItemCategory = games;
+                sharedItemCategory = games.get();
                 break;
             case MarketPlaceContent:
             case StorageDownload:
             case XboxDownload:
-                sharedItemCategory = dlc;
+                sharedItemCategory = dlc.get();
                 break;
             case GameDemo:
-                sharedItemCategory = demos;
+                sharedItemCategory = demos.get();
                 break;
             case GameTrailer:
             case GameVideo:
@@ -531,29 +519,29 @@ void XContentDevice::DeleteFile(IXContentHeader *package, std::string pathOnDevi
             case PodcastVideo:
             case Video:
             case ViralVideo:
-                sharedItemCategory = videos;
+                sharedItemCategory = videos.get();
                 break;
             case Theme:
-                sharedItemCategory = themes;
+                sharedItemCategory = themes.get();
                 break;
             case GamerPicture:
-                sharedItemCategory = gamerPictures;
+                sharedItemCategory = gamerPictures.get();
                 break;
             case AvatarAssetPack:
             case AvatarItem:
-                sharedItemCategory = avatarItems;
+                sharedItemCategory = avatarItems.get();
                 break;
             default:
-                sharedItemCategory = systemItems;
+                sharedItemCategory = systemItems.get();
                 break;
         }
 
-        for (int i = 0; i < sharedItemCategory->size(); i++)
+        for (int i = 0; sharedItemCategory && i < sharedItemCategory->size(); i++)
         {
-            if (sharedItemCategory->at(i).content == package)
+            if (sharedItemCategory->at(i).content.get() == package)
             {
+                sharedItemCategory->at(i).content.reset();
                 sharedItemCategory->erase(sharedItemCategory->begin() + i);
-                delete package;
             }
         }
     }
@@ -628,7 +616,7 @@ void XContentDevice::GetAllContentItems(FatxFileEntry &titleFolder, vector<XCont
                 progress(arg, false);
 
             // this might not be a valid STFS or SVOD package, so we have to do try {} catch {}
-            IXContentHeader *content;
+            std::shared_ptr<IXContentHeader> content;
             std::vector<std::string> contentFilePaths;
             try
             {
@@ -636,12 +624,12 @@ void XContentDevice::GetAllContentItems(FatxFileEntry &titleFolder, vector<XCont
 
                 if (fileSystem == FileSystemSTFS)
                 {
-                    content = new StfsPackage(new FatxIO(io), StfsPackageDeleteIO | StfsPackageDontReadFileListing);
+                    content = std::make_shared<StfsPackage>(new FatxIO(io), StfsPackageDeleteIO | StfsPackageDontReadFileListing);
                 }
                 else if (fileSystem == FileSystemSVOD)
                 {
                     std::string rootFilePath = entry->path + entry->name;
-                    content = new SVOD(rootFilePath, drive, false);
+                    content = std::make_shared<SVOD>(rootFilePath, drive, false);
 
                     // SVOD systems have data files where the actual content is stored; they're in a folder in the same
                     // directory as the header file with the name {HEADER_FILE_NAME}.data
@@ -676,8 +664,13 @@ void XContentDevice::GetAllContentItems(FatxFileEntry &titleFolder, vector<XCont
 
 void XContentDevice::CleanupSharedFiles(std::vector<XContentDeviceSharedItem> *category)
 {
-    for (int i = 0; i < category->size(); i++)
-        delete category->at(i).content;
+    if (category == nullptr)
+        return;
+
+    for (auto &item : *category)
+        item.content.reset();
+
+    category->clear();
 }
 
 std::string XContentDevice::ToUpper(std::string str)

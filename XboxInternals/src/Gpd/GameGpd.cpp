@@ -146,13 +146,9 @@ void GameGpd::CreateAchievement(AchievementEntry *entry, BYTE *thumbnail, DWORD 
     io->SetPosition(xdbf->GetRealAddress(imageEntry.addressSpecifier));
     io->Write(thumbnail, thumbnailLen);
 
-    // make a copy of the image
-    BYTE *imageCopy = new BYTE[thumbnailLen];
-    memcpy(imageCopy, thumbnail, thumbnailLen);
-
     // add the image to the vector
     ImageEntry image;
-    image.image = imageCopy;
+    image.image.assign(thumbnail, thumbnail + thumbnailLen);
     image.length = thumbnailLen;
     image.entry = imageEntry;
 
@@ -235,22 +231,18 @@ void GameGpd::init()
 
 void GameGpd::StartWriting()
 {
-    io = new FileIO(filePath);
-    xdbf->io = io;
+    auto writable = std::make_shared<FileIO>(filePath);
+    io = writable;
+    xdbf->io = writable;
 }
 
 void GameGpd::StopWriting()
 {
-    io->Close();
-    delete io;
-    io = NULL;
-    xdbf->io = NULL;
-}
-
-GameGpd::~GameGpd(void)
-{
-    if (!ioPassedIn && io)
+    if (io)
         io->Close();
+
+    io.reset();
+    xdbf->io.reset();
 }
 
 

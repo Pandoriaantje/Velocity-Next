@@ -1,5 +1,7 @@
 #include <XboxInternals/IO/SvodMultiFileIO.h>
+
 #include <filesystem>
+#include <memory>
 
 using namespace std;
 
@@ -13,13 +15,13 @@ SvodMultiFileIO::SvodMultiFileIO(string fileDirectory) :
         throw string("MultiFileIO: Directory is empty\n");
 
     // open an IO on the first file at position 0
-    currentIO = new FileIO(files.at(0));
+    currentIO = std::make_unique<FileIO>(files.at(0));
 }
 
 SvodMultiFileIO::~SvodMultiFileIO()
 {
-    currentIO->Close();
-    delete currentIO;
+    if (currentIO)
+        currentIO->Close();
 }
 
 void SvodMultiFileIO::loadDirectories(string path)
@@ -68,9 +70,8 @@ void SvodMultiFileIO::SetPosition(DWORD addressInFile, DWORD fileIndex)
             throw string("MultiFileIO: Specified file index is out of range\n");
 
         // open a new IO on the file
-        currentIO->Close();
-        delete currentIO;
-        currentIO = new FileIO(files.at(fileIndex));
+    currentIO->Close();
+    currentIO = std::make_unique<FileIO>(files.at(fileIndex));
 
         if (addressInFile >= CurrentFileLength())
             throw string("MultiFileIO: Cannot seek beyond the end of the file\n");

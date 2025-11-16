@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string>
+
 #include <XboxInternals/IO/BaseIO.h>
 
 #ifdef _WIN32
@@ -37,7 +39,7 @@ private:
 #ifdef _WIN32
     HANDLE hFile;
 #else
-    std::fstream* fstr;
+    std::unique_ptr<std::fstream> fstr;
     UINT64 length;
 #endif
 };

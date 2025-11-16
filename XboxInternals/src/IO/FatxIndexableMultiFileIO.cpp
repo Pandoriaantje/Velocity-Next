@@ -1,6 +1,7 @@
 #include <XboxInternals/IO/FatxIndexableMultiFileIO.h>
 
 #include <algorithm>
+#include <memory>
 #include <utility>
 
 #include <XboxInternals/Fatx/FatxDrive.h>
@@ -22,8 +23,6 @@ FatxIndexableMultiFileIO::~FatxIndexableMultiFileIO()
 {
     if (currentIO) {
         currentIO->Close();
-        delete currentIO;
-        currentIO = nullptr;
     }
 }
 
@@ -45,8 +44,8 @@ void FatxIndexableMultiFileIO::loadDirectories(std::string path)
     std::sort(files.begin(), files.end());
 }
 
-BaseIO* FatxIndexableMultiFileIO::openFile(std::string path)
+std::unique_ptr<BaseIO> FatxIndexableMultiFileIO::openFile(std::string path)
 {
     FatxFileEntry *entry = drive->GetFileEntry(path);
-    return new FatxIO(drive->GetFatxIO(entry));
+    return std::make_unique<FatxIO>(drive->GetFatxIO(entry));
 }
