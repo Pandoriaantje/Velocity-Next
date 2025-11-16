@@ -5,6 +5,8 @@ Velocity-Next
 
 ### What's New in Velocity-Next
 
+- **Smart Pointer Refactoring**: Modern C++20 memory management for improved stability
+- **ISO/XEX Integration**: Merged improvements from Gualdimar/Velocity fork
 - **MSVC 2022 Support**: Full compatibility with Visual Studio 2022 alongside MinGW
 - **Modernized Build System**: CMake 3.20+ with modern target-based patterns
 - **Standalone XboxInternals Library**: Can now be distributed and used independently
@@ -39,10 +41,9 @@ Velocity-Next is a cross-platform application built using the Qt framework that 
 - Xbox disc formats
   - SVOD
   - GDFX
-  - **XISO (Xbox 360 ISO)** ⭐ **NEW**
-    - GDF, XGD3, and Redump format detection
-    - AVL tree directory traversal
-    - File extraction with preserved structure
+  - **XISO (Xbox 360 ISO)** ✅ **FULLY INTEGRATED**
+    - Complete GDF, XGD3, and Redump format support
+    - Memory-safe file extraction
     - XEX metadata parsing (Media ID, Title ID, version info)
 
 ### Text Encoding Support ⭐ **NEW**

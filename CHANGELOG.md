@@ -1,5 +1,22 @@
 # Changelog
 
+## Velocity-Next v0.2.1 - 2025-11-16
+
+### 🔧 Core Refactoring & Improvements
+
+**Memory Management Modernization**
+- Integrated ISO/XEX support from [Gualdimar/Velocity](https://github.com/Gualdimar/Velocity)
+- Converted XboxInternals library to C++20 smart pointers (std::unique_ptr, std::vector)
+- Eliminated manual memory management throughout codebase
+- Improved exception safety with RAII patterns
+- Fixed STFS package handling and hash table operations
+
+**Benefits**
+- Eliminates potential memory leaks through automatic cleanup
+- Improved stability and reliability
+- Better exception safety for edge cases
+- Maintains compatibility with all existing file formats
+
 ## Velocity-Next v0.2.0 - 2025-10-30
 
 Complete modernization of the original Velocity project with new build system, Qt 6 migration, and major feature additions.
