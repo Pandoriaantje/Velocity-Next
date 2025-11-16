@@ -58,8 +58,17 @@ std::vector<std::unique_ptr<FatxDrive>> FatxDriveDetection::GetAllFatxDrives()
         try
         {
             std::string directory;
-            directory.assign(logicalDrivePath.begin(), logicalDrivePath.end());
-
+            #ifdef _WIN32
+            // Convert wide string to narrow string using WideCharToMultiByte
+            int size = WideCharToMultiByte(CP_UTF8, 0, logicalDrivePath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+            if (size > 0)
+            {
+                directory.resize(size - 1); // -1 to exclude null terminator
+                WideCharToMultiByte(CP_UTF8, 0, logicalDrivePath.c_str(), -1, &directory[0], size, nullptr, nullptr);
+            }
+            #else
+            directory = logicalDrivePath;
+            #endif
 
             #ifdef _WIN32
                 WIN32_FIND_DATA fi;
